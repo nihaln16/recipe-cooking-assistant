@@ -71,10 +71,21 @@ def collect_semantic_failures(
 
     if expect.get("no_quantity_for_instruction_only"):
         for item in instruction_only:
-            if item.quantity:
+            if not item.quantity:
+                continue
+            evidence = " ".join(
+                part
+                for part in (
+                    item.evidence.quote if item.evidence else None,
+                    item.source_text,
+                    item.notes,
+                )
+                if part
+            ).lower()
+            if item.quantity.lower() not in evidence:
                 fail(
-                    f"instruction_only {item.name!r} must not invent quantity "
-                    f"(got {item.quantity!r})"
+                    f"instruction_only {item.name!r} quantity {item.quantity!r} "
+                    "is not present in source evidence"
                 )
 
     for check in expect.get("ingredient_checks", []):
@@ -84,6 +95,20 @@ def collect_semantic_failures(
             continue
         if check.get("quantity_is_null") and match.quantity is not None:
             fail(f"{match.name} quantity should be null")
+        if "quantity_substring" in check:
+            qty = (match.quantity or "").lower()
+            if check["quantity_substring"].lower() not in qty:
+                fail(
+                    f"{match.name} quantity expected to contain "
+                    f"{check['quantity_substring']!r}, got {match.quantity!r}"
+                )
+        if "unit_substring" in check:
+            unit = (match.unit or "").lower()
+            if check["unit_substring"].lower() not in unit:
+                fail(
+                    f"{match.name} unit expected to contain "
+                    f"{check['unit_substring']!r}, got {match.unit!r}"
+                )
         if "optional" in check and match.optional != bool(check["optional"]):
             fail(f"{match.name} optional expected {check['optional']}")
         if "list_status" in check and match.list_status != check["list_status"]:

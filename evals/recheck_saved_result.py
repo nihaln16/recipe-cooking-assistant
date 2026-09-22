@@ -38,6 +38,7 @@ def recheck_case(case_id: str) -> int:
         return 2
 
     result = normalize_result(ExtractionResult.model_validate(raw), [])
+    payload["result"] = json.loads(result.model_dump_json())
     failures = collect_semantic_failures(case_id, result, cases[case_id].expect)
 
     # Update ok/error on the saved file without changing model usage fields.

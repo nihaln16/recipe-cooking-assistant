@@ -12,6 +12,7 @@ from recipe_cooking_assistant.normalize import normalize_result
 from recipe_cooking_assistant.quantity_consistency import (
     amounts_conflict,
     apply_quantity_consistency_checks,
+    extract_source_amount,
     extract_step_amount_for_ingredient,
 )
 
@@ -128,6 +129,19 @@ def test_ambiguous_some_flour_is_not_a_contradiction() -> None:
 
 def test_incompatible_units_are_not_forced() -> None:
     assert not amounts_conflict("2", "cups", "3", "tablespoons")
+
+
+def test_instruction_quote_preserves_two_cloves_garlic() -> None:
+    garlic = ExtractedIngredient(
+        id="ing_garlic",
+        name="garlic",
+        list_status="instruction_only",
+    )
+    assert extract_source_amount("Add 2 cloves minced garlic", garlic) == (
+        "2",
+        "cloves",
+    )
+    assert extract_source_amount("finish with grated Parmesan", garlic) is None
 
 
 def test_duplicate_contradictions_not_added() -> None:

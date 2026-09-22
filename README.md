@@ -4,7 +4,7 @@ Turn recipe text or screenshots into a structured recipe and an interactive, ste
 
 ## Status
 
-**Milestone 2 complete** (extraction, semantic normalization, eval harness, contradiction post-validation). Milestone 3 (gap review UI), Cooking Mode, chat, and deploy are paused.
+**Milestone 3 complete** (gap review UI: accept/edit/reject findings, original payload immutable). Cooking Mode, chat, and deploy are paused.
 
 See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for the full handoff.
 
@@ -44,7 +44,7 @@ Copyrighted screenshots belong only under gitignored `evals/local/` for manual r
 
 - One recipe per import. Responses API only (`/v1/responses`).
 - Screenshots processed in upload order; uncertain order is flagged.
-- Instruction-only mentions (in steps but not the ingredient list) become findings for review — not ordinary listed ingredients.
+- Instruction-only mentions (in steps but not the ingredient list) become findings for review — not ordinary listed ingredients until the user adds them. Source-stated amounts (e.g. “2 cloves garlic”) are preserved; invented amounts are not.
 - Alternatives share an `alternative_group_id` (OR, not both required).
 - Package text and `source_text` preserve canned/count wording; qualifiers render as `Salt — to taste`.
 - Default model: `gpt-4.1-mini`.

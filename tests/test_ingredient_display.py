@@ -124,3 +124,107 @@ def test_recipe_page_renders_to_taste_with_em_dash(tmp_path: Path) -> None:
     assert "Ground black pepper — to taste" in response.text
     assert "to taste salt" not in response.text.lower()
     assert SOURCE_PHRASE in response.text
+
+
+def test_user_edited_quantity_overrides_source_text() -> None:
+    item = ExtractedIngredient(
+        id="ing_oil",
+        name="olive oil",
+        quantity="1",
+        unit="tablespoon",
+        source_text="Olive oil",
+        quantity_provenance="user_edit",
+        unit_provenance="user_edit",
+    )
+    assert format_ingredient_line(item) == "1 tablespoon olive oil"
+    assert item.source_text == "Olive oil"
+    assert item.quantity_provenance == "user_edit"
+
+
+def test_conventional_recipe_lines_for_creamy_tomato_ingredients() -> None:
+    oil = ExtractedIngredient(
+        id="ing_oil",
+        name="olive oil",
+        source_text="Olive oil",
+    )
+    tomatoes = ExtractedIngredient(
+        id="ing_tomatoes",
+        name="crushed tomatoes",
+        quantity="1",
+        unit="cup",
+        source_text="1 cup crushed tomatoes",
+    )
+    cream = ExtractedIngredient(
+        id="ing_cream",
+        name="heavy cream",
+        quantity="1/2",
+        unit="cup",
+        source_text="1/2 cup heavy cream",
+    )
+    salt = ExtractedIngredient(
+        id="ing_salt",
+        name="salt",
+        notes="to taste",
+        source_text="Salt to taste",
+    )
+    garlic = ExtractedIngredient(
+        id="ing_garlic",
+        name="garlic cloves",
+        quantity="2",
+        unit="cloves",
+        notes="2 cloves minced",
+        source_text="2 cloves minced garlic",
+        list_status="instruction_only",
+    )
+    parmesan = ExtractedIngredient(
+        id="ing_parm",
+        name="Parmesan",
+        notes="grated",
+        source_text="grated Parmesan",
+        evidence=SourceEvidence(quote="finish with grated Parmesan"),
+    )
+
+    assert format_ingredient_line(oil) == "Olive oil"
+    assert format_ingredient_line(tomatoes) == "1 cup crushed tomatoes"
+    assert format_ingredient_line(cream) == "1/2 cup heavy cream"
+    assert format_ingredient_line(salt) == "Salt — to taste"
+    assert format_ingredient_line(garlic) == "2 cloves garlic, minced"
+    assert format_ingredient_line(parmesan) == "Parmesan, grated"
+    assert parmesan.evidence is not None
+    assert parmesan.evidence.quote == "finish with grated Parmesan"
+    assert garlic.source_text == "2 cloves minced garlic"
+    assert garlic.notes == "2 cloves minced"
+    assert salt.quantity is None
+
+
+def test_to_taste_is_not_a_missing_quantity_finding() -> None:
+    result = ExtractionResult(
+        title="Seasoning",
+        ingredients=[
+            ExtractedIngredient(
+                id="ing_oil",
+                name="olive oil",
+                list_status="listed",
+                source_text="Olive oil",
+            ),
+            ExtractedIngredient(
+                id="ing_salt",
+                name="salt",
+                notes="to taste",
+                list_status="listed",
+                source_text="Salt to taste",
+            ),
+        ],
+        steps=[ExtractedStep(id="step_1", text="Season.")],
+    )
+    normalized = normalize_result(result, [])
+    missing = [
+        finding
+        for finding in normalized.findings
+        if finding.type == "missing_quantity"
+    ]
+    assert any("ing_oil" in finding.related_ids for finding in missing)
+    assert not any("ing_salt" in finding.related_ids for finding in missing)
+    salt = next(item for item in normalized.ingredients if item.id == "ing_salt")
+    assert salt.quantity is None
+    assert format_ingredient_line(salt) == "Salt — to taste"

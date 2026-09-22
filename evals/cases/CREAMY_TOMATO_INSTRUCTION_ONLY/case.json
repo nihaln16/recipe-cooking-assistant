@@ -37,7 +37,8 @@
       {
         "name_substring": "garlic",
         "list_status": "instruction_only",
-        "quantity_is_null": true
+        "quantity_substring": "2",
+        "unit_substring": "clove"
       },
       {
         "name_substring": "parmesan",

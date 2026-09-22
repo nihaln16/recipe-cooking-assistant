@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 
 Confidence = Literal["high", "uncertain"]
-Provenance = Literal["source", "needs_review"]
+Provenance = Literal["source", "needs_review", "ai_suggestion", "user_edit"]
+ReviewStatus = Literal["accepted", "edited", "rejected"]
 ListStatus = Literal["listed", "instruction_only"]
 ReviewFlagType = Literal[
     "uncertain_ordering",
@@ -60,6 +61,9 @@ class ExtractedIngredient(BaseModel):
     package_size: str | None = None
     package_type: str | None = None
     provenance: Provenance = "source"
+    name_provenance: Provenance | None = None
+    quantity_provenance: Provenance | None = None
+    unit_provenance: Provenance | None = None
     confidence: Confidence = "high"
     evidence: SourceEvidence | None = None
 
@@ -68,6 +72,7 @@ class ExtractedStep(BaseModel):
     id: str
     text: str
     provenance: Provenance = "source"
+    text_provenance: Provenance | None = None
     confidence: Confidence = "high"
     evidence: SourceEvidence | None = None
     related_ingredient_ids: list[str] = Field(default_factory=list)
@@ -104,6 +109,14 @@ class ExtractionFinding(BaseModel):
     message: str
     related_ids: list[str] = Field(default_factory=list)
     evidence: SourceEvidence | None = None
+    alias_ids: list[str] = Field(default_factory=list)
+
+
+class ReviewDecision(BaseModel):
+    finding_id: str
+    status: ReviewStatus
+    resolution: dict[str, Any] = Field(default_factory=dict)
+    decided_at: str = ""
 
 
 class IgnoredBoilerplate(BaseModel):

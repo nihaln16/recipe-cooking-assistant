@@ -2,39 +2,177 @@
 
 {% block title %}{{ recipe.title or "Recipe" }} · {{ app_name }}{% endblock %}
 
+{% macro provenance_badge(item) %}
+  {% set badge = item | content_badge %}
+  {% if badge == "Needs review" %}
+  <span class="badge badge-review">Needs review</span>
+  {% elif badge == "User edit" %}
+  <span class="badge badge-edit">User edit</span>
+  {% elif badge == "AI suggestion" %}
+  <span class="badge badge-ai">AI suggestion</span>
+  {% else %}
+  <span class="badge badge-source">Source</span>
+  {% endif %}
+{% endmacro %}
+
 {% block content %}
 <section class="hero-block">
-  <p class="eyebrow">Extracted recipe</p>
+  <p class="eyebrow">{% if pending_review %}Review before cooking{% else %}Extracted recipe{% endif %}</p>
   <h1>{{ recipe.title or "Untitled recipe" }}</h1>
   {% if recipe.servings %}
-  <p class="lede">Servings: {{ recipe.servings }}</p>
+    <p class="lede">Servings: {{ recipe.servings }}</p>
   {% else %}
   <p class="lede">Structured from your pasted text and screenshots. Original source is kept below.</p>
   {% endif %}
 </section>
 
-{% set findings = recipe.findings or [] %}
-{% set flags = recipe.review_flags or [] %}
-{% if findings or flags %}
+{% if review_error %}
+<div class="alert alert-error" role="alert">{{ review_error }}</div>
+{% endif %}
+
+{% if pending_review %}
 <section class="flag-panel" aria-label="Items needing review">
   <h2>Needs review</h2>
+  <p class="hint">Source facts stay labeled. Recommendations are not applied until you choose.</p>
   <ul class="flag-list">
-    {% for finding in findings %}
-    <li>
-      <span class="badge badge-review">{{ finding.type | replace('_', ' ') }}</span>
-      {{ finding.message }}
-      {% if finding.related_ids %}
-      <span class="muted"> · {{ finding.related_ids | join(', ') }}</span>
+    {% for card in pending_review %}
+    <li class="review-card">
+      <div class="meta-row">
+        <span class="badge badge-review">{{ card.finding.type | replace('_', ' ') }}</span>
+      </div>
+      <p class="review-message">{{ card.finding.message }}</p>
+      {% if card.related_line %}
+      <p class="review-related">{{ card.related_line }}</p>
       {% endif %}
+      {% if card.finding.evidence and (card.finding.evidence.quote or card.finding.evidence.image_index is not none) %}
+      <p class="evidence">
+        {% if card.finding.evidence.quote %}“{{ card.finding.evidence.quote }}”{% endif %}
+        {% if card.finding.evidence.image_index is not none %} · screenshot {{ card.finding.evidence.image_index + 1 }}{% endif %}
+      </p>
+      {% endif %}
+      <p class="review-rec">{{ card.recommendation }}</p>
+      <div class="review-actions">
+        <form method="post" action="/recipes/{{ stored.id }}/review/{{ card.finding.id }}">
+          <input type="hidden" name="action" value="accept">
+          <button class="btn btn-primary" type="submit">{{ card.primary_label }}</button>
+        </form>
+        <form method="post" action="/recipes/{{ stored.id }}/review/{{ card.finding.id }}">
+          <input type="hidden" name="action" value="reject">
+          <button class="btn btn-tertiary" type="submit">Reject</button>
+        </form>
+      </div>
+      <details class="review-edit" {% if open_edit == card.finding.id %}open{% endif %}>
+        <summary>Edit</summary>
+        <form class="review-edit-form" method="post" action="/recipes/{{ stored.id }}/review/{{ card.finding.id }}">
+          <input type="hidden" name="action" value="edit">
+          {% if card.finding.type == "instruction_only_ingredient" and card.ingredient %}
+          <div class="field">
+            <label for="name-{{ card.finding.id }}">Name</label>
+            <input id="name-{{ card.finding.id }}" name="name" type="text" value="{{ card.ingredient.name }}">
+          </div>
+          <div class="field">
+            <label for="quantity-{{ card.finding.id }}">Quantity</label>
+            <input id="quantity-{{ card.finding.id }}" name="quantity" type="text" value="{{ card.ingredient.quantity or '' }}" placeholder="Leave blank if the source gives none">
+          </div>
+          <div class="field">
+            <label for="unit-{{ card.finding.id }}">Unit</label>
+            <input id="unit-{{ card.finding.id }}" name="unit" type="text" value="{{ card.ingredient.unit or '' }}">
+          </div>
+          {% elif card.finding.type == "contradiction" %}
+          <fieldset class="field">
+            <legend>Amount to use</legend>
+            <label class="choice-row">
+              <input type="radio" name="choice" value="listed" checked>
+              Keep listed amount{% if card.listed_amount %} ({{ card.listed_amount }}){% endif %}
+            </label>
+            <label class="choice-row">
+              <input type="radio" name="choice" value="step" {% if not card.step_amount %}disabled{% endif %}>
+              Use step amount{% if card.step_amount %} ({{ card.step_amount }}){% endif %}
+            </label>
+            <label class="choice-row">
+              <input type="radio" name="choice" value="custom">
+              Enter a custom amount
+            </label>
+          </fieldset>
+          <div class="field">
+            <label for="quantity-{{ card.finding.id }}">Custom quantity</label>
+            <input id="quantity-{{ card.finding.id }}" name="quantity" type="text">
+          </div>
+          <div class="field">
+            <label for="unit-{{ card.finding.id }}">Custom unit</label>
+            <input id="unit-{{ card.finding.id }}" name="unit" type="text">
+          </div>
+          {% elif card.finding.type == "missing_quantity" %}
+          <div class="field">
+            <label for="quantity-{{ card.finding.id }}">Quantity</label>
+            <input id="quantity-{{ card.finding.id }}" name="quantity" type="text">
+          </div>
+          <div class="field">
+            <label for="unit-{{ card.finding.id }}">Unit</label>
+            <input id="unit-{{ card.finding.id }}" name="unit" type="text">
+          </div>
+          {% else %}
+            {% if card.ingredient %}
+          <div class="field">
+            <label for="name-{{ card.finding.id }}">Name</label>
+            <input id="name-{{ card.finding.id }}" name="name" type="text" value="{{ card.ingredient.name }}">
+          </div>
+          <div class="field">
+            <label for="quantity-{{ card.finding.id }}">Quantity</label>
+            <input id="quantity-{{ card.finding.id }}" name="quantity" type="text" value="{{ card.ingredient.quantity or '' }}">
+          </div>
+          <div class="field">
+            <label for="unit-{{ card.finding.id }}">Unit</label>
+            <input id="unit-{{ card.finding.id }}" name="unit" type="text" value="{{ card.ingredient.unit or '' }}">
+          </div>
+            {% endif %}
+            {% if card.step %}
+          <div class="field">
+            <label for="text-{{ card.finding.id }}">Step text</label>
+            <textarea id="text-{{ card.finding.id }}" name="text" rows="3">{{ card.step.text }}</textarea>
+          </div>
+            {% endif %}
+          {% endif %}
+          <div class="actions">
+            <button class="btn btn-primary" type="submit">Save changes</button>
+          </div>
+        </form>
+      </details>
     </li>
     {% endfor %}
-    {% for flag in flags %}
-      {% if not findings %}
-    <li>
-      <span class="badge badge-review">{{ flag.type | replace('_', ' ') }}</span>
-      {{ flag.message }}
-    </li>
+  </ul>
+</section>
+{% elif decided_review %}
+<section class="flag-panel" aria-label="Review complete">
+  <h2>Review complete</h2>
+  <p class="hint">Accepted and edited recommendations are in the working recipe below. Rejected items were not applied.</p>
+</section>
+{% endif %}
+
+{% if decided_review %}
+<section class="recipe-section" aria-label="Decided review items">
+  <h2>Decided</h2>
+  <ul class="flag-list">
+    {% for card in decided_review %}
+    <li class="review-card is-decided">
+      <div class="meta-row">
+        {% if card.decision.status == "rejected" %}
+        <span class="badge badge-rejected">Rejected</span>
+        {% elif card.decision.status == "edited" %}
+        <span class="badge badge-edit">Edited</span>
+        {% else %}
+        <span class="badge badge-source">Accepted</span>
+        {% endif %}
+        <span class="badge">{{ card.finding.type | replace('_', ' ') }}</span>
+      </div>
+      <p class="review-message">{{ card.finding.message }}</p>
+      {% if card.resolution_summary %}
+      <p class="review-related">{{ card.resolution_summary }}</p>
       {% endif %}
+      {% if card.finding.evidence and card.finding.evidence.quote %}
+      <p class="evidence">“{{ card.finding.evidence.quote }}”</p>
+      {% endif %}
+    </li>
     {% endfor %}
   </ul>
 </section>
@@ -61,17 +199,13 @@
       </li>
       {% else %}
         {% for item in members %}
-        <li class="recipe-item {% if item.optional %}is-optional{% endif %} {% if item.confidence == 'uncertain' or item.provenance == 'needs_review' %}is-uncertain{% endif %}">
+        <li class="recipe-item {% if item.optional %}is-optional{% endif %} {% if item | content_badge == 'Needs review' %}is-uncertain{% endif %}">
           <div class="recipe-item-main">{{ item | ingredient_line }}</div>
           <div class="meta-row">
             {% if item.optional %}
             <span class="badge">Optional</span>
             {% endif %}
-            {% if item.provenance == 'needs_review' or item.confidence == 'uncertain' %}
-            <span class="badge badge-review">Needs review</span>
-            {% else %}
-            <span class="badge badge-source">Source</span>
-            {% endif %}
+            {{ provenance_badge(item) }}
             {% if item.evidence and (item.evidence.quote or item.evidence.image_index is not none) %}
             <span class="evidence">
               {% if item.evidence.quote %}“{{ item.evidence.quote }}”{% endif %}
@@ -100,6 +234,7 @@
       <div class="recipe-item-main">{{ item | ingredient_line }}</div>
       <div class="meta-row">
         <span class="badge badge-review">Instruction only</span>
+        {{ provenance_badge(item) }}
         {% if item.evidence and item.evidence.quote %}
         <span class="evidence">“{{ item.evidence.quote }}”</span>
         {% endif %}
@@ -115,14 +250,10 @@
   {% if recipe.steps %}
   <ol class="recipe-steps">
     {% for step in recipe.steps %}
-    <li class="recipe-item {% if step.confidence == 'uncertain' or step.provenance == 'needs_review' %}is-uncertain{% endif %}">
+    <li class="recipe-item {% if step | content_badge == 'Needs review' %}is-uncertain{% endif %}">
       <div class="recipe-item-main">{{ step.text }}</div>
       <div class="meta-row">
-        {% if step.provenance == 'needs_review' or step.confidence == 'uncertain' %}
-        <span class="badge badge-review">Needs review</span>
-        {% else %}
-        <span class="badge badge-source">Source</span>
-        {% endif %}
+        {{ provenance_badge(step) }}
         {% if step.source_direction_text %}
         <span class="evidence">From: “{{ step.source_direction_text }}”</span>
         {% elif step.evidence and (step.evidence.quote or step.evidence.image_index is not none) %}

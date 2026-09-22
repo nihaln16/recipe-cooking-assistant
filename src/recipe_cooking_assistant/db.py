@@ -13,6 +13,7 @@ from recipe_cooking_assistant.config import Settings
 from recipe_cooking_assistant.models import (
     ExtractionResult,
     ExtractionUsage,
+    ReviewDecision,
     StoredExtraction,
 )
 
@@ -120,6 +121,20 @@ class Database:
                     ON extracted_recipes(session_id);
                 CREATE INDEX IF NOT EXISTS idx_recipes_bundle
                     ON extracted_recipes(bundle_id);
+
+                CREATE TABLE IF NOT EXISTS review_decisions (
+                    extraction_id TEXT NOT NULL,
+                    finding_id TEXT NOT NULL,
+                    session_id TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    resolution_json TEXT NOT NULL DEFAULT '{}',
+                    decided_at TEXT NOT NULL,
+                    PRIMARY KEY (extraction_id, finding_id),
+                    FOREIGN KEY (extraction_id) REFERENCES extracted_recipes(id)
+                        ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_review_extraction
+                    ON review_decisions(extraction_id);
                 """
             )
             cols = {
@@ -342,6 +357,68 @@ class Database:
             created_at=row["created_at"],
             expires_at=row["expires_at"],
         )
+
+    def list_review_decisions(
+        self, extraction_id: str, session_id: str
+    ) -> list[ReviewDecision]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT finding_id, status, resolution_json, decided_at
+                FROM review_decisions
+                WHERE extraction_id = ? AND session_id = ?
+                ORDER BY decided_at ASC
+                """,
+                (extraction_id, session_id),
+            ).fetchall()
+        decisions: list[ReviewDecision] = []
+        for row in rows:
+            try:
+                resolution = json.loads(row["resolution_json"] or "{}")
+            except json.JSONDecodeError:
+                resolution = {}
+            if not isinstance(resolution, dict):
+                resolution = {}
+            decisions.append(
+                ReviewDecision(
+                    finding_id=row["finding_id"],
+                    status=row["status"],
+                    resolution=resolution,
+                    decided_at=row["decided_at"],
+                )
+            )
+        return decisions
+
+    def upsert_review_decision(
+        self,
+        *,
+        extraction_id: str,
+        session_id: str,
+        decision: ReviewDecision,
+    ) -> None:
+        decided_at = decision.decided_at or isoformat(utcnow())
+        payload = json.dumps(decision.resolution)
+        with self.connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO review_decisions (
+                    extraction_id, finding_id, session_id, status,
+                    resolution_json, decided_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(extraction_id, finding_id) DO UPDATE SET
+                    status = excluded.status,
+                    resolution_json = excluded.resolution_json,
+                    decided_at = excluded.decided_at
+                """,
+                (
+                    extraction_id,
+                    decision.finding_id,
+                    session_id,
+                    decision.status,
+                    payload,
+                    decided_at,
+                ),
+            )
 
     def purge_expired(self) -> list[str]:
         """Delete expired bundles; return stored_paths for file cleanup."""

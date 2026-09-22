@@ -1,6 +1,6 @@
 # Project status handoff — Recipe Cooking Assistant
 
-Handoff for a new Cursor agent. Last updated after the contradiction post-validation fix (session end). **Do not expose `.env`, API keys, session secrets, copyrighted screenshots, or ignored local evaluation files.**
+Handoff for a new Cursor agent. Last updated after **milestone 3 review UI**. **Do not expose `.env`, API keys, session secrets, copyrighted screenshots, or ignored local evaluation files.**
 
 ## User problem and V1 scope
 
@@ -9,7 +9,7 @@ Handoff for a new Cursor agent. Last updated after the contradiction post-valida
 **V1 product flow (target):**
 1. Paste recipe/caption text and/or upload multiple screenshots of the same recipe.
 2. Multimodal extraction → structured ingredients, quantities, steps, notes, uncertainties; retain original source.
-3. Detect gaps/inconsistencies; label source vs AI; user accept/edit/reject (review UI = milestone 3, **not started**).
+3. Detect gaps/inconsistencies; user accept/edit/reject on the recipe page (**milestone 3, done**).
 4. Clean recipe view + mobile Cooking Mode (milestone 4+, **not started**).
 5. Contextual quick actions + freeform grounded chat (later).
 
@@ -18,10 +18,12 @@ Handoff for a new Cursor agent. Last updated after the contradiction post-valida
 - Do not present AI amounts/substitutions as creator facts.
 - Do not claim visual appearance proves food safety.
 - One recipe per import; no web scraping; no video ingestion.
+- Content provenance is separate from review-decision status. Accepting a recommendation does not relabel source-derived content as `ai_suggestion`.
 
 ## Intentionally deferred
 
-- Milestone 3 gap accept/edit/reject UI and Cooking Mode / chat / deploy / broad visual redesign
+- Cooking Mode / chat / deploy / broad visual redesign
+- LLM-generated quantity/substitution patches (review uses deterministic recommendations only)
 - Social scraping, share integration, accounts, saved library, custom OCR/CV, advanced personalization
 - In-progress cooking photo analysis
 
@@ -38,12 +40,14 @@ Handoff for a new Cursor agent. Last updated after the contradiction post-valida
 |------|------|
 | `src/recipe_cooking_assistant/app.py` | App factory |
 | `src/recipe_cooking_assistant/extraction.py` | Responses API client, logging, cost estimate |
-| `src/recipe_cooking_assistant/extraction_schema.py` | JSON schema + system prompt |
-| `src/recipe_cooking_assistant/models.py` | Extraction data model |
-| `src/recipe_cooking_assistant/normalize.py` | Post-extract normalization |
-| `src/recipe_cooking_assistant/quantity_consistency.py` | List-vs-step contradiction validation |
+| `src/recipe_cooking_assistant/extraction_schema.py` | JSON schema + system prompt (`source` \| `needs_review` only) |
+| `src/recipe_cooking_assistant/models.py` | Extraction + review-decision data model |
+| `src/recipe_cooking_assistant/normalize.py` | Post-extract normalization, findings |
+| `src/recipe_cooking_assistant/quantity_consistency.py` | List-vs-step contradiction + source-amount parse |
+| `src/recipe_cooking_assistant/review.py` | Working-recipe overlay from review decisions |
 | `src/recipe_cooking_assistant/ingredient_display.py` | Qualifiers, alternatives grouping, display lines |
-| `src/recipe_cooking_assistant/routes/` | Import + recipe HTML routes |
+| `src/recipe_cooking_assistant/db.py` | SQLite: bundles, extractions, `review_decisions` |
+| `src/recipe_cooking_assistant/routes/` | Import + recipe + review HTML routes |
 | `evals/harness/` | Deterministic + live eval runners/assertions |
 | `evals/cases/*/case.json` | Eval cases + expects |
 | `evals/local/` | **Gitignored** private/synthetic images for manual live runs |
@@ -53,25 +57,39 @@ Handoff for a new Cursor agent. Last updated after the contradiction post-valida
 ## Completed milestones
 
 1. **App shell + import UI** — sessions, uploads, limits, temporary storage
-2. **Extraction + eval harness** — messy sources, provenance, findings, semantic normalization, deterministic/live evals
-3. **Not started:** gap review UI, Cooking Mode, chat, deployment packaging
+2. **Extraction + eval harness** — messy sources, provenance, findings, semantic normalization, deterministic/live evals, contradiction post-validation
+3. **Gap review UI** — accept/edit/reject findings on `/recipes/{id}`; original payload immutable; working recipe derived at read time
+4. **Not started:** Cooking Mode, chat, deployment packaging
 
-## Provenance and uncertainty
+## Provenance and review
 
-- Field provenance: `source` | `needs_review` (later: `ai_suggestion` | `user_edit`)
-- Prefer `source_text` + evidence (quote / image_index)
+- **Content provenance** (Python working copy): `source` | `needs_review` | `ai_suggestion` | `user_edit`
+- OpenAI extraction schema still emits only `source` | `needs_review`
+- Per-field overrides: `name_provenance`, `quantity_provenance`, `unit_provenance`, `text_provenance` (null = inherit item provenance)
+- Unchanged source-derived fields stay `source`. Edited name/qty/unit → `user_edit` on that field only
+- **`ai_suggestion` is reserved** for content actually generated or inferred by AI. Milestone 3 does not set it (promoting or choosing a source fact is not an AI suggestion)
+- Review-decision status lives in `review_decisions` (`accepted` | `edited` | `rejected`), not on content provenance
 - Qualifiers (`to taste`, `as needed`, `for garnish`, `divided`) → notes; display like `Salt — to taste`
-- Uncertain → `needs_review`, not asserted as fact
+- Uncertain extraction → `needs_review`, not asserted as fact
+- Instruction-only amounts: keep qty/unit when the instruction states them (e.g. “Add 2 cloves garlic”); clear invented amounts; never invent
 
 ## Schema concepts (current)
 
-- **`list_status`:** `listed` vs `instruction_only` (step mentions absent from ingredient list → finding, not ordinary listed Source item; quantities cleared for instruction-only)
-- **`alternative_group_id`:** OR alternatives (shared non-null id; do not require a specific string like `alt_protein`)
+- **`list_status`:** `listed` vs `instruction_only` (step mentions absent from the list → finding; not shown as listed Source until the user adds them)
+- **`alternative_group_id`:** OR alternatives (shared non-null id)
 - **Package fields** + **`source_text`:** preserve can/count wording
 - **`optional`:** garnish/optional groups
 - **Steps:** atomic split allowed; keep `source_direction_text` + evidence
-- **Findings / review_flags:** `instruction_only_ingredient`, `contradiction`, `uncertain_ordering`, etc.
+- **Findings:** `instruction_only_ingredient`, `contradiction`, `missing_quantity` (listed items with no amount and no qualifier note), `uncertain_ordering`, `uncertain_extraction`, `other`
 - **Servings:** normalize `"4 servings"` → `"4"`
+
+## Milestone 3 review behavior
+
+- GET `/recipes/{id}` shows pending finding cards with specific primaries: **Add to ingredients**, **Keep listed amount**, **Keep unspecified**, **Keep as extracted**, plus Edit and Reject
+- POST `/recipes/{id}/review/{finding_id}` (session-scoped); 404 for other sessions; 400 on invalid action/fields
+- Original `extracted_recipes.payload_json` is never updated. Working recipe = original + accepted/edited decisions
+- Rejected decisions remain visible under **Decided** and are not applied
+- No Cooking Mode CTA
 
 ## Evaluation commands
 
@@ -95,11 +113,11 @@ Uses Responses API only. Results → `evals/results/` (gitignored). Copyrighted 
 |--------------|--------|--------------|--------|
 | First live extract | 502 | — | Must use Responses API, not Chat Completions |
 | Qualifier rendering | Fixed | — | `to taste` is a note → `Salt — to taste` |
-| Creamy Tomato Pasta (UI) | Partial → schema fix | (interactive) | Instruction-only garlic/Parmesan must not look like listed Source; no invented Parmesan qty; olive oil may lack quantity |
+| Creamy Tomato Pasta (UI) | Partial → schema fix | (interactive) | Instruction-only garlic/Parmesan must not look like listed Source until review; no invented Parmesan qty; olive oil may lack quantity |
 | Chili ×3 screenshots | Technical pass; semantic issues → schema + harness fixes → **PASS on recheck** | ~$0.005–$0.009 | Alternatives share group id; keep package `source_text`; optional garnishes; don’t require exact ignored role `ad` if chrome simply omitted |
 | `CONTRADICTION_QUANTITY` live | Fail (wrong finding) → **PASS after deterministic post-validation recheck** | ~$0.0013 | Model linked step to listed `ing_1` but emitted `instruction_only_ingredient`; post-validation reclassifies clear 2-cups-vs-3-cups as `contradiction` |
 
-## Contradiction fix (just completed)
+## Contradiction post-check (milestone 2)
 
 **Module:** `quantity_consistency.py`, applied in `normalize_result`.
 
@@ -112,20 +130,22 @@ Uses Responses API only. Results → `evals/results/` (gitignored). Copyrighted 
 
 ## Current passing counts
 
-- **33** pytest tests passed
+- **49** pytest tests passed
 - **16/16** deterministic eval cases passed
+
+## Milestone 3 follow-up (duplicate findings)
+
+Review queue is `result.findings` after `canonicalize_findings` in `normalize_result` (and again on recipe GET/POST). Semantic key is finding **type + related target**, not generated ids or exact message punctuation. Model `find_1` + deterministic `find_ing_6` for the same garlic mention collapse to one card; alias ids share one review decision. Stronger evidence (quote/image) is kept.
+
+**Ingredient display:** Formatter-only conventional recipe lines: lowercase name after quantity/unit (`1 tablespoon olive oil`), leading capital when there is no numeric prefix (`Olive oil`), `Salt — to taste`, prep notes as `, minced`. Proper nouns (e.g. Parmesan) and source evidence quotes are preserved. Stored source fields and provenance are not mutated. `to taste` still does not create a missing-quantity finding.
+
+**Parmesan on the live Creamy Tomato extract** (`finish with grated Parmesan`) was **absent from extraction**, not dropped later. The step text includes Parmesan but `related_ingredient_ids` pointed at penne; no Parmesan ingredient row exists. Do not invent a quantity. Repairing that requires a new extract (or a later gap detector), not a review-queue fix.
 
 ## Exact next recommended task
 
-Run a **targeted live** case to confirm end-to-end model + post-validation behavior, e.g.:
+**Milestone 4: Cooking Mode** (only after the user explicitly asks). Use the working (reviewed) recipe, not rejected suggestions. Do not start chat, deploy, or paid evals unless asked.
 
-```bash
-uv run python evals/run_live_eval.py --case CONTRADICTION_QUANTITY --plan
-# after user approval:
-uv run python evals/run_live_eval.py --case CONTRADICTION_QUANTITY --execute
-```
-
-Or proceed to **milestone 3** (narrow gap review UI: accept/edit/reject findings) only after the user explicitly asks.
+Optional later: targeted live re-run of `CONTRADICTION_QUANTITY` or Creamy Tomato after user approval.
 
 ## Security / privacy for the next agent
 

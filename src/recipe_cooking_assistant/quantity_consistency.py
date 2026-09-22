@@ -60,6 +60,91 @@ _UNIT_ALT = "|".join(
 )
 _QTY = r"(?P<qty>\d+\s*/\s*\d+|\d+(?:\.\d+)?)"
 _UNIT = rf"(?P<unit>{_UNIT_ALT})"
+_UNIT_PLAIN = rf"(?:{_UNIT_ALT})"
+_LEADING_AMOUNT_RE = re.compile(rf"(?i)^\s*{_QTY}\s*{_UNIT}\b")
+
+
+def extract_source_amount(
+    text: str | None, ingredient: ExtractedIngredient
+) -> tuple[str, str] | None:
+    """Return (qty, unit) stated in text for this ingredient, if explicit."""
+    if not text:
+        return None
+    cleaned = " ".join(text.split())
+    if not cleaned:
+        return None
+
+    name = (ingredient.name or "").strip()
+    name_candidates = [name] if name else []
+    tokens = name.split()
+    if tokens:
+        last = tokens[-1]
+        if last.lower() not in {c.lower() for c in name_candidates}:
+            name_candidates.append(last)
+
+    for candidate in name_candidates:
+        if not candidate:
+            continue
+        name_pat = re.escape(candidate)
+        pattern = re.compile(
+            rf"(?i){_QTY}\s*{_UNIT}(?:\s+(?!{_UNIT_PLAIN}\b)\w+){{0,3}}\s+"
+            rf"(?:of\s+)?{name_pat}\b"
+        )
+        match = pattern.search(cleaned)
+        if match:
+            return match.group("qty").replace(" ", ""), match.group("unit")
+
+    return None
+
+
+def extract_leading_amount(text: str | None) -> tuple[str, str] | None:
+    """Parse a leading 'N unit' from a short ingredient phrase."""
+    if not text:
+        return None
+    match = _LEADING_AMOUNT_RE.match(" ".join(text.split()))
+    if not match:
+        return None
+    return match.group("qty").replace(" ", ""), match.group("unit")
+
+
+def source_amount_for_instruction_ingredient(
+    result: ExtractionResult, ingredient: ExtractedIngredient
+) -> tuple[str, str] | None:
+    """Best source-backed amount for an instruction-only mention. Never invent."""
+    texts: list[str] = []
+    if ingredient.evidence and ingredient.evidence.quote:
+        texts.append(ingredient.evidence.quote)
+    if ingredient.source_text:
+        texts.append(ingredient.source_text)
+
+    for text in texts:
+        found = extract_source_amount(text, ingredient)
+        if found:
+            return found
+
+    for text in (ingredient.source_text, ingredient.notes):
+        found = extract_leading_amount(text)
+        if found:
+            return found
+
+    for step in result.steps:
+        name = (ingredient.name or "").strip().lower()
+        mentioned = ingredient.id in step.related_ingredient_ids
+        if name and name in (step.text or "").lower():
+            mentioned = True
+        if name and name in (step.source_direction_text or "").lower():
+            mentioned = True
+        if not mentioned:
+            continue
+        found = extract_source_amount(step.text, ingredient)
+        if found:
+            return found
+        if step.source_direction_text:
+            found = extract_source_amount(step.source_direction_text, ingredient)
+            if found:
+                return found
+
+    return None
 
 
 def normalize_unit(unit: str | None) -> str | None:

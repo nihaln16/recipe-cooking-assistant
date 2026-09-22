@@ -60,6 +60,10 @@ def test_instruction_only_not_in_listed_and_creates_finding() -> None:
     assert "parmesan" not in listed_names
     parm = next(i for i in normalized.instruction_only_ingredients() if "parmesan" in i.name.lower())
     assert parm.quantity is None
+    garlic = next(i for i in normalized.instruction_only_ingredients() if i.name.lower() == "garlic")
+    assert garlic.quantity == "2"
+    assert garlic.unit and "clove" in garlic.unit.lower()
+    assert garlic.provenance == "source"
     assert any(i.name.lower() == "garlic" for i in normalized.instruction_only_ingredients())
     assert any(
         f.type == "instruction_only_ingredient" and "ing_garlic" in f.related_ids
