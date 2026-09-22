@@ -4,7 +4,22 @@ version = "0.1.0"
 description = "Interactive cooking assistant for recipes imported from text and screenshots"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "jinja2>=3.1.4",
+    "python-multipart>=0.0.12",
+    "itsdangerous>=2.2.0",
+    "pydantic-settings>=2.6.0",
+    "openai>=1.60.0",
+    "pillow>=11.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.27.0",
+    "pytest>=8.3.0",
+]
 
 [project.scripts]
 recipe-cooking-assistant = "recipe_cooking_assistant:main"
@@ -12,3 +27,7 @@ recipe-cooking-assistant = "recipe_cooking_assistant:main"
 [build-system]
 requires = ["uv_build>=0.12.15,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

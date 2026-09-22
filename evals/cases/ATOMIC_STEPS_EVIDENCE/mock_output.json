@@ -1,0 +1,75 @@
+{
+  "insufficient_source": false,
+  "insufficient_reason": null,
+  "title": "Recipe",
+  "servings": null,
+  "ingredients": [
+    {
+      "id": "ing_1",
+      "name": "chickpeas",
+      "quantity": "1",
+      "unit": "can",
+      "notes": null,
+      "source_text": "1 can chickpeas",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "1 can chickpeas",
+        "image_id": null,
+        "image_index": null
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "step_1",
+      "text": "Pat chickpeas dry.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Pat chickpeas dry and toss with cumin and salt.",
+        "image_id": null,
+        "image_index": null
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": "Pat chickpeas dry and toss with cumin and salt."
+    },
+    {
+      "id": "step_2",
+      "text": "Toss with cumin and salt.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Pat chickpeas dry and toss with cumin and salt.",
+        "image_id": null,
+        "image_index": null
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": "Pat chickpeas dry and toss with cumin and salt."
+    },
+    {
+      "id": "step_3",
+      "text": "Roast until crisp.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Roast until crisp.",
+        "image_id": null,
+        "image_index": null
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": "Roast until crisp."
+    }
+  ],
+  "creator_notes": [],
+  "content_roles": [],
+  "review_flags": [],
+  "findings": [],
+  "ignored_boilerplate": []
+}

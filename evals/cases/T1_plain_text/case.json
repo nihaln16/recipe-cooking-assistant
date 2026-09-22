@@ -1,0 +1,20 @@
+{
+  "id": "T1_plain_text",
+  "source_text": "Tomato Pasta\nServes 2\nIngredients\n- 8 oz spaghetti\n- 2 tbsp olive oil\nSteps\n1. Boil pasta.\n2. Toss with oil.",
+  "expect": {
+    "insufficient_source": false,
+    "listed_name_substrings": [
+      "spaghetti",
+      "olive oil"
+    ],
+    "servings": "2",
+    "min_steps": 2,
+    "finding_types_exclude": [
+      "instruction_only_ingredient"
+    ]
+  },
+  "live": {
+    "enabled": true,
+    "estimated_max_cost_usd": 0.03
+  }
+}

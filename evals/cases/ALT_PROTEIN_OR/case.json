@@ -1,0 +1,30 @@
+{
+  "id": "ALT_PROTEIN_OR",
+  "source_text": "Chili\nIngredients\n- 1 pound ground turkey or 12 ounces soy crumbles\n- 1 onion\nSteps\n1. Brown the protein.",
+  "expect": {
+    "has_alternative_group": true,
+    "listed_name_substrings": [
+      "turkey",
+      "soy"
+    ],
+    "alternative_groups": [
+      ["turkey", "soy"]
+    ],
+    "ingredient_checks": [
+      {
+        "name_substring": "turkey",
+        "has_alternative_group": true,
+        "source_text_substring": "1 pound ground turkey"
+      },
+      {
+        "name_substring": "soy",
+        "has_alternative_group": true,
+        "source_text_substring": "12 ounces soy"
+      }
+    ]
+  },
+  "live": {
+    "enabled": true,
+    "estimated_max_cost_usd": 0.03
+  }
+}

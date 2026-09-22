@@ -1,0 +1,70 @@
+{
+  "insufficient_source": false,
+  "insufficient_reason": null,
+  "title": "Recipe",
+  "servings": null,
+  "ingredients": [
+    {
+      "id": "ing_1",
+      "name": "whole peeled tomatoes",
+      "quantity": null,
+      "unit": null,
+      "notes": "with their juice",
+      "source_text": "One 14 1/2-ounce can whole peeled tomatoes, with their juice",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": "One",
+      "package_size": "14 1/2-ounce",
+      "package_type": "can",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "One 14 1/2-ounce can whole peeled tomatoes, with their juice",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_2",
+      "name": "kidney beans",
+      "quantity": null,
+      "unit": null,
+      "notes": "rinsed and drained",
+      "source_text": "One 15 1/2-ounce can kidney beans, rinsed and drained",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": "One",
+      "package_size": "15 1/2-ounce",
+      "package_type": "can",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "One 15 1/2-ounce can kidney beans, rinsed and drained",
+        "image_id": null,
+        "image_index": null
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "step_1",
+      "text": "Cook.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Cook.",
+        "image_id": null,
+        "image_index": null
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": null
+    }
+  ],
+  "creator_notes": [],
+  "content_roles": [],
+  "review_flags": [],
+  "findings": [],
+  "ignored_boilerplate": []
+}

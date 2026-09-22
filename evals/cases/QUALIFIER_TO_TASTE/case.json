@@ -1,0 +1,17 @@
+{
+  "id": "QUALIFIER_TO_TASTE",
+  "source_text": "salt and ground black pepper to taste\nSeason and serve.",
+  "expect": {
+    "display_line_substrings": [
+      "Salt \u2014 to taste",
+      "Ground black pepper \u2014 to taste"
+    ],
+    "display_line_exclude_substrings": [
+      "to taste salt"
+    ]
+  },
+  "live": {
+    "enabled": true,
+    "estimated_max_cost_usd": 0.03
+  }
+}

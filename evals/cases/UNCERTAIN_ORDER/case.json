@@ -1,0 +1,13 @@
+{
+  "id": "UNCERTAIN_ORDER",
+  "source_text": "Unclear which screenshot comes first.",
+  "expect": {
+    "finding_types": [
+      "uncertain_ordering"
+    ]
+  },
+  "live": {
+    "enabled": false,
+    "estimated_max_cost_usd": 0.05
+  }
+}

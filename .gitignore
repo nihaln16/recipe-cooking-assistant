@@ -12,3 +12,8 @@ __pycache__/
 uploads/
 *.db
 *.sqlite3
+
+# Manual / live evaluation artifacts (may include private screenshots)
+evals/local/
+evals/results/
+evals/private/

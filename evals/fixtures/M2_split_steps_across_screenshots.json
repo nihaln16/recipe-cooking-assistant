@@ -1,0 +1,22 @@
+{
+  "id": "M2_split_steps_across_screenshots",
+  "description": "Steps continue across two screenshots in upload order. Process image_index 0 then 1; do not reorder. Flag uncertain_ordering only if continuity is genuinely unclear.",
+  "screenshots_in_upload_order": [
+    {
+      "image_index": 0,
+      "filename": "screen_1_ingredients_and_early_steps.txt",
+      "simulated_ocr_text": "Crispy Chickpea Bowl\nIngredients\n- 1 can chickpeas\n- 1 tsp cumin\n- 2 cups cooked rice\n- lemon wedges\n\nSteps\n1. Pat chickpeas dry and toss with cumin and a pinch of salt.\n2. Roast at 425 F for 20 minutes until crisp."
+    },
+    {
+      "image_index": 1,
+      "filename": "screen_2_remaining_steps.txt",
+      "simulated_ocr_text": "3. Warm rice in a bowl.\n4. Top with chickpeas and squeeze of lemon.\nServe immediately.\n@foodblog · follow for more bowls"
+    }
+  ],
+  "expect": {
+    "step_order_follows_upload_order": true,
+    "min_steps": 4,
+    "ignore_roles": ["credit", "boilerplate"],
+    "flag_uncertain_ordering_only_if_unclear": true
+  }
+}

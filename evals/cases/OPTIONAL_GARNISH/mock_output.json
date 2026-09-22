@@ -1,0 +1,112 @@
+{
+  "insufficient_source": false,
+  "insufficient_reason": null,
+  "title": "Recipe",
+  "servings": null,
+  "ingredients": [
+    {
+      "id": "ing_1",
+      "name": "beef",
+      "quantity": "1",
+      "unit": "lb",
+      "notes": null,
+      "source_text": "1 lb beef",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "1 lb beef",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_2",
+      "name": "cilantro",
+      "quantity": null,
+      "unit": null,
+      "notes": null,
+      "source_text": "cilantro",
+      "list_status": "listed",
+      "optional": true,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "cilantro",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_3",
+      "name": "lime wedges",
+      "quantity": null,
+      "unit": null,
+      "notes": null,
+      "source_text": "lime wedges",
+      "list_status": "listed",
+      "optional": true,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "lime wedges",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_4",
+      "name": "diced onion",
+      "quantity": null,
+      "unit": null,
+      "notes": null,
+      "source_text": "diced onion",
+      "list_status": "listed",
+      "optional": true,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "diced onion",
+        "image_id": null,
+        "image_index": null
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "step_1",
+      "text": "Cook.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Cook.",
+        "image_id": null,
+        "image_index": null
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": null
+    }
+  ],
+  "creator_notes": [],
+  "content_roles": [],
+  "review_flags": [],
+  "findings": [],
+  "ignored_boilerplate": []
+}

@@ -1,2 +1,4 @@
 def main() -> None:
-    print("Hello from recipe-cooking-assistant!")
+    from recipe_cooking_assistant.app import main as run
+
+    run()

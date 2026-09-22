@@ -1,0 +1,28 @@
+{
+  "id": "PACKAGE_CANNED",
+  "source_text": "Soup\nIngredients\n- One 14 1/2-ounce can whole peeled tomatoes, with their juice\n- One 15 1/2-ounce can kidney beans, rinsed and drained\nSteps\n1. Combine.",
+  "expect": {
+    "ingredient_checks": [
+      {
+        "name_substring": "tomatoes",
+        "package_type_substring": "can",
+        "source_text_substring": "14 1/2-ounce",
+        "notes_substring": "juice"
+      },
+      {
+        "name_substring": "kidney beans",
+        "package_type_substring": "can",
+        "source_text_substring": "15 1/2-ounce",
+        "notes_substring": "rinsed"
+      }
+    ],
+    "display_line_substrings": [
+      "14 1/2-ounce",
+      "15 1/2-ounce"
+    ]
+  },
+  "live": {
+    "enabled": true,
+    "estimated_max_cost_usd": 0.03
+  }
+}

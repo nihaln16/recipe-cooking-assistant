@@ -1,0 +1,15 @@
+{
+  "id": "I1_DISH_ONLY",
+  "source_text": "",
+  "expect": {
+    "insufficient_source": true
+  },
+  "live": {
+    "enabled": true,
+    "estimated_max_cost_usd": 0.02,
+    "image_paths": [
+      "local/synthetic_dish_only.png"
+    ],
+    "note": "Use a synthetic dish photo only; do not invent a recipe."
+  }
+}

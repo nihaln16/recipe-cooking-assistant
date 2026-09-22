@@ -1,0 +1,25 @@
+{
+  "id": "OPTIONAL_GARNISH",
+  "source_text": "Tacos\nIngredients\n- 1 lb beef\n- Optional garnishes: cilantro, lime wedges, diced onion\nSteps\n1. Cook beef.",
+  "expect": {
+    "has_optional_ingredient": true,
+    "ingredient_checks": [
+      {
+        "name_substring": "cilantro",
+        "optional": true
+      },
+      {
+        "name_substring": "lime",
+        "optional": true
+      },
+      {
+        "name_substring": "onion",
+        "optional": true
+      }
+    ]
+  },
+  "live": {
+    "enabled": true,
+    "estimated_max_cost_usd": 0.03
+  }
+}

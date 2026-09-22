@@ -1,0 +1,73 @@
+{
+  "insufficient_source": false,
+  "insufficient_reason": null,
+  "title": "Recipe",
+  "servings": null,
+  "ingredients": [
+    {
+      "id": "ing_1",
+      "name": "flour",
+      "quantity": "2",
+      "unit": "cups",
+      "notes": null,
+      "source_text": "2 cups flour",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "2 cups flour",
+        "image_id": null,
+        "image_index": null
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "step_1",
+      "text": "Mix 3 cups flour with water.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Mix 3 cups flour with water.",
+        "image_id": null,
+        "image_index": null
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": null
+    }
+  ],
+  "creator_notes": [],
+  "content_roles": [],
+  "review_flags": [
+    {
+      "type": "contradiction",
+      "message": "Ingredient list says 2 cups flour but step says 3 cups",
+      "related_ids": [
+        "ing_1",
+        "step_1"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "find_1",
+      "type": "contradiction",
+      "message": "Ingredient list says 2 cups flour but step says 3 cups",
+      "related_ids": [
+        "ing_1",
+        "step_1"
+      ],
+      "evidence": {
+        "quote": "3 cups flour",
+        "image_id": null,
+        "image_index": null
+      }
+    }
+  ],
+  "ignored_boilerplate": []
+}

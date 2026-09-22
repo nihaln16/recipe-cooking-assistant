@@ -1,0 +1,19 @@
+{
+  "id": "OVERLAP_SCREENSHOTS",
+  "source_text": "Screenshot overlap proxy: ingredients appear twice across shots.",
+  "expect": {
+    "listed_name_substrings": [
+      "onion"
+    ],
+    "ingredient_checks": [
+      {
+        "name_substring": "onion",
+        "source_text_substring": "1 onion"
+      }
+    ]
+  },
+  "live": {
+    "enabled": false,
+    "estimated_max_cost_usd": 0.05
+  }
+}

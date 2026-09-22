@@ -1,0 +1,13 @@
+{
+  "insufficient_source": true,
+  "insufficient_reason": "Only a finished dish photo was provided.",
+  "title": "Recipe",
+  "servings": null,
+  "ingredients": [],
+  "steps": [],
+  "creator_notes": [],
+  "content_roles": [],
+  "review_flags": [],
+  "findings": [],
+  "ignored_boilerplate": []
+}

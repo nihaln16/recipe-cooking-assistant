@@ -1,0 +1,20 @@
+{
+  "id": "M1_interleaved_boilerplate",
+  "source_file": "source.txt",
+  "expect": {
+    "insufficient_source": false,
+    "listed_name_exclude_substrings": [
+      "MegaSpice",
+      "Pinterest"
+    ],
+    "min_steps": 2,
+    "ignored_boilerplate_roles": [
+      "ad",
+      "credit"
+    ]
+  },
+  "live": {
+    "enabled": true,
+    "estimated_max_cost_usd": 0.04
+  }
+}

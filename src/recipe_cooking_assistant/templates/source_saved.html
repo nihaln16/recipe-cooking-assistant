@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Source · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-block">
+  <p class="eyebrow">Temporary source</p>
+  <h1>Recipe source</h1>
+  <p class="lede">
+    Kept for about {{ limits.ttl_hours }} hours in this browser session.
+  </p>
+</section>
+
+<section class="source-panel">
+  <h2>Original text</h2>
+  {% if bundle.raw_text %}
+  <pre class="source-text">{{ bundle.raw_text }}</pre>
+  {% else %}
+  <p class="empty-inline">No text was provided.</p>
+  {% endif %}
+
+  <h2>Screenshots (upload order)</h2>
+  {% if bundle.images %}
+  <ul class="file-list">
+    {% for image in bundle.images %}
+    <li>
+      <span class="file-name">#{{ image.sort_index + 1 }} · {{ image.filename }}</span>
+      <span class="file-meta">{{ (image.size_bytes / 1024) | round(1) }} KB · {{ image.content_type }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty-inline">No images were uploaded.</p>
+  {% endif %}
+</section>
+
+<div class="actions">
+  <a class="btn btn-secondary" href="/">Import another</a>
+</div>
+{% endblock %}

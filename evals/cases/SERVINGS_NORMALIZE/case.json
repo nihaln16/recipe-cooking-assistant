@@ -1,0 +1,11 @@
+{
+  "id": "SERVINGS_NORMALIZE",
+  "source_text": "Serves 4 servings somehow\nIngredients\n- 1 cup rice\nSteps\n1. Cook.",
+  "expect": {
+    "servings": "4"
+  },
+  "live": {
+    "enabled": true,
+    "estimated_max_cost_usd": 0.02
+  }
+}

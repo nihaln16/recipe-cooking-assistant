@@ -1,0 +1,26 @@
+{
+  "id": "M1_interleaved_captions_credits",
+  "source_file": "M1_interleaved_captions_credits.txt",
+  "expect": {
+    "insufficient_source": false,
+    "must_not_include_ingredient_names_containing": [
+      "MegaSpice",
+      "Pinterest",
+      "Privacy Policy",
+      "Alex Kim"
+    ],
+    "should_keep_creator_note_substrings": [
+      "rinse the beans"
+    ],
+    "ignored_boilerplate_roles_allowed": [
+      "ad",
+      "credit",
+      "boilerplate",
+      "anecdote",
+      "step_photo_caption",
+      "other"
+    ],
+    "min_ingredients": 3,
+    "min_steps": 2
+  }
+}

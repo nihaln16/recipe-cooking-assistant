@@ -1,0 +1,70 @@
+{
+  "insufficient_source": false,
+  "insufficient_reason": null,
+  "title": "Recipe",
+  "servings": null,
+  "ingredients": [
+    {
+      "id": "ing_1",
+      "name": "olive oil",
+      "quantity": null,
+      "unit": null,
+      "notes": null,
+      "source_text": "Olive oil",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Olive oil",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_2",
+      "name": "salt",
+      "quantity": "1",
+      "unit": "tsp",
+      "notes": null,
+      "source_text": "1 tsp salt",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "1 tsp salt",
+        "image_id": null,
+        "image_index": null
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "step_1",
+      "text": "Cook.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Cook.",
+        "image_id": null,
+        "image_index": null
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": null
+    }
+  ],
+  "creator_notes": [],
+  "content_roles": [],
+  "review_flags": [],
+  "findings": [],
+  "ignored_boilerplate": []
+}

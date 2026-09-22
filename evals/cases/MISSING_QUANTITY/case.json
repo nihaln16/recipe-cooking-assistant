@@ -1,0 +1,16 @@
+{
+  "id": "MISSING_QUANTITY",
+  "source_text": "Ingredients\n- Olive oil\n- 1 tsp salt\nSteps\n1. Heat oil.",
+  "expect": {
+    "ingredient_checks": [
+      {
+        "name_substring": "olive oil",
+        "quantity_is_null": true
+      }
+    ]
+  },
+  "live": {
+    "enabled": true,
+    "estimated_max_cost_usd": 0.03
+  }
+}

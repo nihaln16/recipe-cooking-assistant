@@ -1,0 +1,138 @@
+{
+  "insufficient_source": false,
+  "insufficient_reason": null,
+  "title": "Garlicky White Bean Toast",
+  "servings": null,
+  "ingredients": [
+    {
+      "id": "ing_1",
+      "name": "white beans",
+      "quantity": "1",
+      "unit": "can",
+      "notes": "drained",
+      "source_text": "1 can white beans, drained",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "1 can white beans, drained",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_2",
+      "name": "olive oil",
+      "quantity": "1",
+      "unit": "tbsp",
+      "notes": null,
+      "source_text": "1 tbsp olive oil",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "1 tbsp olive oil",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_3",
+      "name": "garlic clove",
+      "quantity": "1",
+      "unit": null,
+      "notes": null,
+      "source_text": "1 garlic clove",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "1 garlic clove",
+        "image_id": null,
+        "image_index": null
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "step_1",
+      "text": "Mash beans with oil and garlic.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Mash beans with oil and garlic.",
+        "image_id": null,
+        "image_index": null
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": null
+    },
+    {
+      "id": "step_2",
+      "text": "Toast bread and top with mash.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Toast bread and top with mash.",
+        "image_id": null,
+        "image_index": null
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": null
+    }
+  ],
+  "creator_notes": [
+    {
+      "id": "note_1",
+      "text": "rinse the beans well or the toast tastes metallic",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "rinse the beans well",
+        "image_id": null,
+        "image_index": null
+      }
+    }
+  ],
+  "content_roles": [
+    {
+      "role": "ad",
+      "summary": "sponsored block",
+      "image_index": null,
+      "kept_in_recipe": false
+    },
+    {
+      "role": "credit",
+      "summary": "photo credit",
+      "image_index": null,
+      "kept_in_recipe": false
+    }
+  ],
+  "review_flags": [],
+  "findings": [],
+  "ignored_boilerplate": [
+    {
+      "summary": "Sponsored MegaSpice ad",
+      "role": "ad"
+    },
+    {
+      "summary": "Photo credit Alex Kim",
+      "role": "credit"
+    }
+  ]
+}

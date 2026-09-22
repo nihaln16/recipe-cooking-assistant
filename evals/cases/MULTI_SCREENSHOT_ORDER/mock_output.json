@@ -1,0 +1,109 @@
+{
+  "insufficient_source": false,
+  "insufficient_reason": null,
+  "title": "Crispy Chickpea Bowl",
+  "servings": null,
+  "ingredients": [
+    {
+      "id": "ing_1",
+      "name": "chickpeas",
+      "quantity": "1",
+      "unit": "can",
+      "notes": null,
+      "source_text": "1 can chickpeas",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "1 can chickpeas",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_2",
+      "name": "rice",
+      "quantity": "2",
+      "unit": "cups",
+      "notes": null,
+      "source_text": "2 cups cooked rice",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "2 cups cooked rice",
+        "image_id": null,
+        "image_index": null
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "step_1",
+      "text": "Pat chickpeas dry.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Pat chickpeas dry.",
+        "image_id": null,
+        "image_index": 0
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": "Pat chickpeas dry and toss with cumin."
+    },
+    {
+      "id": "step_2",
+      "text": "Toss with cumin.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Toss with cumin.",
+        "image_id": null,
+        "image_index": 0
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": "Pat chickpeas dry and toss with cumin."
+    },
+    {
+      "id": "step_3",
+      "text": "Warm rice.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Warm rice.",
+        "image_id": null,
+        "image_index": 1
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": "Warm rice in a bowl. Top with chickpeas."
+    },
+    {
+      "id": "step_4",
+      "text": "Top with chickpeas.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Top with chickpeas.",
+        "image_id": null,
+        "image_index": 1
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": "Warm rice in a bowl. Top with chickpeas."
+    }
+  ],
+  "creator_notes": [],
+  "content_roles": [],
+  "review_flags": [],
+  "findings": [],
+  "ignored_boilerplate": []
+}

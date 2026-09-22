@@ -1,0 +1,16 @@
+# Plain text recipe — expect structured ingredients/steps with source evidence.
+
+Tomato Garlic Pasta
+Serves 2
+
+Ingredients
+- 8 oz spaghetti
+- 2 tbsp olive oil
+- 3 garlic cloves, sliced
+- 1 cup crushed tomatoes
+- salt
+
+Steps
+1. Boil spaghetti in salted water until al dente.
+2. Warm olive oil and gently cook garlic until fragrant.
+3. Stir in tomatoes, simmer 8 minutes, toss with pasta.

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Import · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-block">
+  <h1 class="brand-hero">{{ app_name }}</h1>
+  <p class="lede">Paste a caption or upload screenshots of the same recipe—in order. We’ll classify messy page content and keep creator source separate from anything uncertain.</p>
+</section>
+
+{% if error %}
+<div class="alert alert-error" role="alert">{{ error }}</div>
+{% endif %}
+
+{% if not has_api_key %}
+<div class="alert alert-info" role="status">
+  Extraction needs an OpenAI API key in your local <code>.env</code> as <code>OPENAI_API_KEY</code>. Set it privately—don’t paste it into chat.
+</div>
+{% endif %}
+
+<form class="import-form" action="/import" method="post" enctype="multipart/form-data">
+  <div class="field">
+    <label for="recipe_text">Recipe text or caption</label>
+    <textarea
+      id="recipe_text"
+      name="recipe_text"
+      rows="10"
+      placeholder="Paste the ingredients, steps, or social caption here"
+    >{{ raw_text }}</textarea>
+  </div>
+
+  <fieldset class="field">
+    <legend>Screenshots</legend>
+    <p class="hint">
+      Up to {{ limits.max_images }} images · {{ limits.types_label }} ·
+      {{ limits.max_mb|int }}&nbsp;MB each · processed in the order you select.
+      A finished-dish photo alone is not enough—include readable recipe content.
+    </p>
+    <label class="file-drop" for="images">
+      <span class="file-drop-title">Add screenshots</span>
+      <span class="file-drop-meta">Choose one or more images of the same recipe</span>
+      <input
+        id="images"
+        name="images"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+      >
+    </label>
+  </fieldset>
+
+  <div class="actions">
+    <button type="submit" class="btn btn-primary">Extract recipe</button>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,53 @@
+{
+  "id": "CREAMY_TOMATO_INSTRUCTION_ONLY",
+  "source_text": "Creamy Tomato Pasta\nIngredients\n- 8 ounces penne\n- Olive oil\n- 1 cup crushed tomatoes\n- 1/2 cup heavy cream\n- Salt to taste\n\nInstructions\n1. Boil penne.\n2. Warm olive oil. Add 2 cloves minced garlic and cook.\n3. Add tomatoes and cream.\n4. Season with salt and finish with grated Parmesan.",
+  "expect": {
+    "insufficient_source": false,
+    "listed_name_substrings": [
+      "penne",
+      "olive oil",
+      "tomatoes",
+      "cream",
+      "salt"
+    ],
+    "listed_name_exclude_substrings": [
+      "garlic",
+      "parmesan"
+    ],
+    "instruction_only_name_substrings": [
+      "garlic",
+      "parmesan"
+    ],
+    "finding_types": [
+      "instruction_only_ingredient"
+    ],
+    "no_quantity_for_instruction_only": true,
+    "display_line_substrings": [
+      "Salt \u2014 to taste"
+    ],
+    "display_line_exclude_substrings": [
+      "to taste salt"
+    ],
+    "ingredient_checks": [
+      {
+        "name_substring": "olive oil",
+        "quantity_is_null": true,
+        "list_status": "listed"
+      },
+      {
+        "name_substring": "garlic",
+        "list_status": "instruction_only",
+        "quantity_is_null": true
+      },
+      {
+        "name_substring": "parmesan",
+        "list_status": "instruction_only",
+        "quantity_is_null": true
+      }
+    ]
+  },
+  "live": {
+    "enabled": true,
+    "estimated_max_cost_usd": 0.04
+  }
+}

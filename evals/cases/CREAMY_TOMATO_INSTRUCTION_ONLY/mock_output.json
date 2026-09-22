@@ -1,0 +1,241 @@
+{
+  "insufficient_source": false,
+  "insufficient_reason": null,
+  "title": "Creamy Tomato Pasta",
+  "servings": null,
+  "ingredients": [
+    {
+      "id": "ing_1",
+      "name": "penne",
+      "quantity": "8",
+      "unit": "ounces",
+      "notes": null,
+      "source_text": "8 ounces penne",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "8 ounces penne",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_2",
+      "name": "olive oil",
+      "quantity": null,
+      "unit": null,
+      "notes": null,
+      "source_text": "Olive oil",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Olive oil",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_3",
+      "name": "crushed tomatoes",
+      "quantity": "1",
+      "unit": "cup",
+      "notes": null,
+      "source_text": "1 cup crushed tomatoes",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "1 cup crushed tomatoes",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_4",
+      "name": "heavy cream",
+      "quantity": "1/2",
+      "unit": "cup",
+      "notes": null,
+      "source_text": "1/2 cup heavy cream",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "1/2 cup heavy cream",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_5",
+      "name": "salt",
+      "quantity": "to taste",
+      "unit": null,
+      "notes": null,
+      "source_text": "Salt to taste",
+      "list_status": "listed",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Salt to taste",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_6",
+      "name": "garlic",
+      "quantity": null,
+      "unit": null,
+      "notes": "2 cloves minced",
+      "source_text": "2 cloves minced garlic",
+      "list_status": "instruction_only",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Add 2 cloves minced garlic",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "ing_7",
+      "name": "Parmesan",
+      "quantity": null,
+      "unit": null,
+      "notes": "grated",
+      "source_text": "grated Parmesan",
+      "list_status": "instruction_only",
+      "optional": false,
+      "alternative_group_id": null,
+      "package_count": null,
+      "package_size": null,
+      "package_type": null,
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "finish with grated Parmesan",
+        "image_id": null,
+        "image_index": null
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "step_1",
+      "text": "Boil penne.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Boil penne.",
+        "image_id": null,
+        "image_index": null
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": null
+    },
+    {
+      "id": "step_2",
+      "text": "Warm olive oil. Add 2 cloves minced garlic and cook.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Add 2 cloves minced garlic",
+        "image_id": null,
+        "image_index": null
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": null
+    },
+    {
+      "id": "step_3",
+      "text": "Add tomatoes and cream.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "Add tomatoes and cream.",
+        "image_id": null,
+        "image_index": null
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": null
+    },
+    {
+      "id": "step_4",
+      "text": "Season with salt and finish with grated Parmesan.",
+      "provenance": "source",
+      "confidence": "high",
+      "evidence": {
+        "quote": "finish with grated Parmesan",
+        "image_id": null,
+        "image_index": null
+      },
+      "related_ingredient_ids": [],
+      "source_direction_text": null
+    }
+  ],
+  "creator_notes": [],
+  "content_roles": [],
+  "review_flags": [],
+  "findings": [
+    {
+      "id": "find_ing_6",
+      "type": "instruction_only_ingredient",
+      "message": "Referenced in instructions but absent from ingredient list",
+      "related_ids": [
+        "ing_6"
+      ],
+      "evidence": {
+        "quote": "Add 2 cloves minced garlic",
+        "image_id": null,
+        "image_index": null
+      }
+    },
+    {
+      "id": "find_ing_7",
+      "type": "instruction_only_ingredient",
+      "message": "Referenced in instructions but absent from ingredient list",
+      "related_ids": [
+        "ing_7"
+      ],
+      "evidence": {
+        "quote": "finish with grated Parmesan",
+        "image_id": null,
+        "image_index": null
+      }
+    }
+  ],
+  "ignored_boilerplate": []
+}

@@ -1,0 +1,53 @@
+{
+  "id": "CHILI_LOCAL_SCREENSHOTS",
+  "source_text": null,
+  "expect": {
+    "insufficient_source": false,
+    "has_alternative_group": true,
+    "servings": "4",
+    "alternative_groups": [
+      ["turkey", "soy"]
+    ],
+    "ingredient_checks": [
+      {
+        "name_substring": "turkey",
+        "has_alternative_group": true,
+        "source_text_substring": "ground turkey"
+      },
+      {
+        "name_substring": "soy",
+        "has_alternative_group": true,
+        "source_text_substring": "soy"
+      },
+      {
+        "name_substring": "tomatoes",
+        "package_type_substring": "can",
+        "source_text_substring": "ounce"
+      }
+    ],
+    "has_optional_ingredient": true,
+    "min_steps": 3,
+    "ignored_boilerplate_roles_allowed": ["ad", "other", "boilerplate", "credit"],
+    "recipe_content_exclude_substrings": [
+      "sponsored",
+      "advertisement",
+      "share on",
+      "pinterest",
+      "privacy policy",
+      "all rights reserved",
+      "newsletter",
+      "rate this recipe",
+      "food network shop"
+    ]
+  },
+  "live": {
+    "enabled": true,
+    "estimated_max_cost_usd": 0.10,
+    "image_paths": [
+      "local/chili/1.png",
+      "local/chili/2.png",
+      "local/chili/3.png"
+    ],
+    "notes": "Manual only. Place Food Network screenshots under evals/local/chili/ (gitignored). Do not commit them."
+  }
+}

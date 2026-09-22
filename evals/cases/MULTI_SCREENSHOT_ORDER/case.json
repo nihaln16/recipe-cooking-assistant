@@ -1,0 +1,20 @@
+{
+  "id": "MULTI_SCREENSHOT_ORDER",
+  "source_text": null,
+  "expect": {
+    "min_steps": 4,
+    "listed_name_substrings": [
+      "chickpeas",
+      "rice"
+    ],
+    "steps_have_source_direction": true
+  },
+  "live": {
+    "enabled": true,
+    "estimated_max_cost_usd": 0.08,
+    "image_paths": [
+      "local/synthetic_split_steps_1.png",
+      "local/synthetic_split_steps_2.png"
+    ]
+  }
+}

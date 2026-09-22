@@ -1,0 +1,12 @@
+{
+  "id": "ATOMIC_STEPS_EVIDENCE",
+  "source_text": "Directions: Pat chickpeas dry and toss with cumin and salt. Roast until crisp.",
+  "expect": {
+    "min_steps": 2,
+    "steps_have_source_direction": true
+  },
+  "live": {
+    "enabled": true,
+    "estimated_max_cost_usd": 0.03
+  }
+}
