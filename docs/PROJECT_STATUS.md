@@ -1,6 +1,6 @@
 # Project status handoff — Recipe Cooking Assistant
 
-Handoff for a new Cursor agent. Last updated after **milestone 4 Cooking Mode**. **Do not expose `.env`, API keys, session secrets, copyrighted screenshots, or ignored local evaluation files.**
+Handoff for a new Cursor agent. Last updated after **milestone 5 deployment preparation**. **Do not expose `.env`, API keys, session secrets, copyrighted screenshots, or ignored local evaluation files.**
 
 ## User problem and V1 scope
 
@@ -22,7 +22,8 @@ Handoff for a new Cursor agent. Last updated after **milestone 4 Cooking Mode**.
 
 ## Intentionally deferred
 
-- Chat / contextual quick actions / timers / voice / accounts / saved library / deploy / broad visual redesign
+- Chat / contextual quick actions / timers / voice / accounts / saved library / broad visual redesign
+- Creating the Render service, GitHub secrets, or an OpenAI budget (the blueprint is in-repo; the user creates the service)
 - LLM-generated quantity/substitution patches (review uses deterministic recommendations only)
 - Social scraping, share integration, accounts, saved library, custom OCR/CV, advanced personalization
 - In-progress cooking photo analysis
@@ -32,7 +33,7 @@ Handoff for a new Cursor agent. Last updated after **milestone 4 Cooking Mode**.
 - **Stack:** FastAPI + Jinja2 + vanilla CSS (no React/Tailwind), session cookie + ephemeral SQLite + `uploads/`
 - **Model:** OpenAI **`gpt-4.1-mini`** via **Responses API only** (`client.responses.create`) with JSON Schema structured outputs and `input_text` / `input_image`
 - **API key constraint:** Project key is restricted to **`/v1/responses` Write**. Never switch to Chat Completions. Never ask the user to broaden key permissions or paste keys into chat.
-- **Secrets:** `OPENAI_API_KEY`, `SESSION_SECRET` in local `.env` / host env only (gitignored)
+- **Secrets:** `OPENAI_API_KEY`, `SESSION_SECRET` from the environment only. Locally that may be a gitignored `.env`. On Render they are service env vars. The app refuses to start when `RENDER=true` and either value is missing or `SESSION_SECRET` is still a placeholder.
 
 ### Important paths
 
@@ -61,7 +62,8 @@ Handoff for a new Cursor agent. Last updated after **milestone 4 Cooking Mode**.
 2. **Extraction + eval harness** — messy sources, provenance, findings, semantic normalization, deterministic/live evals, contradiction post-validation
 3. **Gap review UI** — accept/edit/reject findings on `/recipes/{id}`; original payload immutable; working recipe derived at read time
 4. **Cooking Mode** — one reviewed step at a time after findings are decided; session-scoped progress
-5. **Not started:** chat, quick actions, deployment packaging
+5. **Deployment preparation** — `render.yaml`, `GET /health`, GitHub Actions free tests. The Render service itself is not created.
+6. **Not started:** chat, quick actions
 
 ## Provenance and review
 
@@ -132,7 +134,7 @@ Uses Responses API only. Results → `evals/results/` (gitignored). Copyrighted 
 
 ## Current passing counts
 
-- **57** pytest tests passed
+- **69** pytest tests passed
 - **16/16** deterministic eval cases passed
 
 ## Milestone 3 follow-up (duplicate findings)
@@ -154,9 +156,22 @@ Review queue is `result.findings` after `canonicalize_findings` in `normalize_re
 - Expired recipes and other sessions get the same 404 as the recipe page.
 - Zero steps: empty cooking page. One step: Back disabled, Finish. Last step: Finish. Completion links back to the reviewed recipe.
 
+## Milestone 5 deployment
+
+- Blueprint: `render.yaml`. Branch `main`. `autoDeployTrigger: checksPass`. Plan `free`. Health path `/health`.
+- Build: `pip install uv && uv sync --frozen --no-dev`
+- Start: `uv run uvicorn recipe_cooking_assistant.app:app --host 0.0.0.0 --port $PORT --proxy-headers`
+- Local `uv run recipe-cooking-assistant` still binds `127.0.0.1:8000` with reload. On Render it binds `0.0.0.0` and `$PORT`.
+- Required env names: `OPENAI_API_KEY` (dashboard, `sync: false`), `SESSION_SECRET` (Render `generateValue`). Also set in the blueprint, not secret: `OPENAI_MODEL=gpt-4.1-mini`, `SESSION_TTL_HOURS=24`, `MAX_IMAGES=6`, `MAX_UPLOAD_BYTES=4194304`, `DATA_DIR=/tmp/recipe-cooking-assistant`, `PYTHON_VERSION=3.11.11`.
+- `GET /health` returns `{"status":"ok"}` and does not call OpenAI.
+- CI: `.github/workflows/ci.yml` runs `uv run pytest` and `uv run python evals/run_deterministic_eval.py` on push to `main` and on pull requests. It does not set `OPENAI_API_KEY` and does not run live evals.
+- **Ephemeral disk:** Render free instances have no persistent disk. SQLite (`DATA_DIR/app.db`) and `uploads/` disappear on restart or redeploy. Session cookies and old `/recipes/{id}` links then 404. Startup still purges expired rows and deletes their files when the process is still the same disk. `uploads/`, `*.db`, and `.env` stay gitignored.
+- **Import cap (in-memory, this process only):** 8 imports per client per hour and 30 per process per hour, checked before extraction. A restart clears the counters. Empty import submissions do not count. An OpenAI project budget or usage alert is a separate notice to configure in the OpenAI dashboard; this repo does not verify that it hard-stops spending. The key must stay restricted to `/v1/responses`.
+- Unhandled errors return a generic HTML message. Logs redact `sk-` keys, image data URLs, and absolute home/tmp paths.
+
 ## Exact next recommended task
 
-**Do not start the next product slice unless the user asks.** Next planned slice is contextual quick actions and grounded chat, using the working recipe and the current cooking step. No paid evals unless asked.
+**Do not start the next product slice unless the user asks.** Next planned slice is contextual quick actions and grounded chat. Do not create the Render service unless the user asks. No paid evals unless asked.
 
 Optional later: targeted live re-run of `CONTRADICTION_QUANTITY` or Creamy Tomato after user approval.
 

@@ -18,6 +18,11 @@ from recipe_cooking_assistant.extraction import (
     get_extraction_client,
     log_extraction_failure,
 )
+from recipe_cooking_assistant.import_limit import (
+    LIMIT_MESSAGE,
+    client_key,
+    request_exceeds_upload_budget,
+)
 from recipe_cooking_assistant.storage import UploadError, save_uploads
 from recipe_cooking_assistant.templating import create_templates
 
@@ -86,6 +91,41 @@ async def import_submit(
                 raw_text=recipe_text,
             ),
             status_code=400,
+        )
+
+    if request_exceeds_upload_budget(
+        request,
+        max_images=settings.max_images,
+        max_upload_bytes=settings.max_upload_bytes,
+    ):
+        limit_mb = settings.max_upload_bytes / (1024 * 1024)
+        return templates.TemplateResponse(
+            request,
+            "import.html",
+            _import_context(
+                settings,
+                error=(
+                    f"That upload is too large. Use at most {settings.max_images} "
+                    f"images, {limit_mb:.0f} MB each."
+                ),
+                raw_text=recipe_text,
+            ),
+            status_code=400,
+        )
+
+    limiter = request.app.state.import_limiter
+    allowed = limiter.allow(
+        client_key(request),
+        per_client=settings.import_limit_per_client,
+        per_process=settings.import_limit_per_process,
+        window_seconds=settings.import_limit_window_seconds,
+    )
+    if not allowed:
+        return templates.TemplateResponse(
+            request,
+            "import.html",
+            _import_context(settings, error=LIMIT_MESSAGE, raw_text=recipe_text),
+            status_code=429,
         )
 
     bundle_id = str(uuid4())

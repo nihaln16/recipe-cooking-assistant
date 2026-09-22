@@ -1,0 +1,29 @@
+# Render Blueprint. Secret values are not stored in this file.
+# Free web services have an ephemeral disk: SQLite and uploads disappear on restart.
+services:
+  - type: web
+    name: recipe-cooking-assistant
+    runtime: python
+    plan: free
+    branch: main
+    autoDeployTrigger: checksPass
+    healthCheckPath: /health
+    buildCommand: pip install uv && uv sync --frozen --no-dev
+    startCommand: uv run uvicorn recipe_cooking_assistant.app:app --host 0.0.0.0 --port $PORT --proxy-headers
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.11"
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+      - key: SESSION_TTL_HOURS
+        value: "24"
+      - key: MAX_IMAGES
+        value: "6"
+      - key: MAX_UPLOAD_BYTES
+        value: "4194304"
+      - key: DATA_DIR
+        value: /tmp/recipe-cooking-assistant
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false

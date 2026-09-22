@@ -28,6 +28,15 @@ class Settings(BaseSettings):
     )
     openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4.1-mini", validation_alias="OPENAI_MODEL")
+    import_limit_per_client: int = Field(
+        default=8, validation_alias="IMPORT_LIMIT_PER_CLIENT"
+    )
+    import_limit_per_process: int = Field(
+        default=30, validation_alias="IMPORT_LIMIT_PER_PROCESS"
+    )
+    import_limit_window_seconds: int = Field(
+        default=3600, validation_alias="IMPORT_LIMIT_WINDOW_SECONDS"
+    )
 
     @property
     def upload_dir(self) -> Path:

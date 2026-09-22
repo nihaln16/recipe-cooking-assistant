@@ -32,6 +32,9 @@ SAFE_UI_API_ERROR = (
 )
 _SECRET_RE = re.compile(r"sk-[A-Za-z0-9_\-]{8,}")
 _DATA_URL_RE = re.compile(r"data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+")
+_PATH_RE = re.compile(
+    r"(?:[A-Za-z]:\\[^\s\"']+|/(?:Users|home|tmp|var|opt|private|app)(?:/[^\s\"']*)?)"
+)
 
 
 class ExtractionError(Exception):
@@ -64,6 +67,7 @@ def sanitize_log_text(text: str, *, limit: int = 400) -> str:
     message = text or ""
     message = _SECRET_RE.sub("[redacted-api-key]", message)
     message = _DATA_URL_RE.sub("[redacted-image-data]", message)
+    message = _PATH_RE.sub("[redacted-path]", message)
     message = " ".join(message.split())
     if len(message) > limit:
         return message[: limit - 3] + "..."

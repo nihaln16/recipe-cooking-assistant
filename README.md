@@ -4,7 +4,7 @@ Turn recipe text or screenshots into a structured recipe and an interactive, ste
 
 ## Status
 
-**Milestone 4 complete** (mobile Cooking Mode from the reviewed working recipe). Chat, quick actions, and deploy are paused.
+**Milestone 5 prepared** (Render blueprint and GitHub Actions). The Render service is not created yet. Chat and quick actions are paused.
 
 See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for the full handoff.
 
@@ -19,6 +19,19 @@ uv run recipe-cooking-assistant
 ```
 
 Open http://127.0.0.1:8000 · Health: `GET /health`
+
+## Deploy (Render)
+
+The service is not created by this repository. `render.yaml` targets GitHub `main` and deploys only after CI checks pass.
+
+```bash
+pip install uv && uv sync --frozen --no-dev
+uv run uvicorn recipe_cooking_assistant.app:app --host 0.0.0.0 --port $PORT --proxy-headers
+```
+
+Health check path: `GET /health`. It does not call OpenAI.
+
+Set `OPENAI_API_KEY` and `SESSION_SECRET` in the Render dashboard. Do not commit them. On Render’s free plan, SQLite and uploaded files are deleted when the instance restarts, so old recipe links stop working.
 
 ## Tests (free / CI-safe)
 
