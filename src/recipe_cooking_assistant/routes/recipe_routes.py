@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from recipe_cooking_assistant.config import Settings
-from recipe_cooking_assistant.db import Database
+from recipe_cooking_assistant.db import Database, SourceBundle
 from recipe_cooking_assistant.deps import get_db, get_session_id, get_settings
 from recipe_cooking_assistant.ingredient_display import group_listed_ingredients
-from recipe_cooking_assistant.models import StoredExtraction
+from recipe_cooking_assistant.models import ExtractionResult, ReviewDecision, StoredExtraction
 from recipe_cooking_assistant.normalize import canonicalize_findings, remap_review_decisions
 from recipe_cooking_assistant.review import (
+    ReviewCard,
     ReviewError,
     apply_decisions,
     build_review_cards,
@@ -20,6 +23,51 @@ from recipe_cooking_assistant.templating import create_templates
 templates = create_templates()
 
 router = APIRouter(tags=["recipes"])
+
+
+@dataclass
+class PreparedRecipe:
+    stored: StoredExtraction
+    bundle: SourceBundle | None
+    decisions: list[ReviewDecision]
+    working: ExtractionResult
+    cards: list[ReviewCard]
+
+    @property
+    def pending(self) -> list[ReviewCard]:
+        return [card for card in self.cards if card.decision is None]
+
+    @property
+    def decided(self) -> list[ReviewCard]:
+        return [card for card in self.cards if card.decision is not None]
+
+
+def prepare_recipe(
+    db: Database, recipe_id: str, session_id: str
+) -> PreparedRecipe | None:
+    """Load a session-owned recipe and derive the working copy.
+
+    Canonicalizes findings in memory, remaps review decisions, and applies
+    accepted and edited decisions. Does not write the extraction payload.
+    """
+    stored = db.get_extraction_for_session(recipe_id, session_id)
+    if stored is None:
+        return None
+    bundle = db.get_bundle_for_session(stored.bundle_id, session_id)
+    canonicalize_findings(stored.result)
+    decisions = remap_review_decisions(
+        db.list_review_decisions(stored.id, session_id),
+        stored.result,
+    )
+    working = apply_decisions(stored.result, decisions)
+    cards = build_review_cards(stored.result, working, decisions)
+    return PreparedRecipe(
+        stored=stored,
+        bundle=bundle,
+        decisions=decisions,
+        working=working,
+        cards=cards,
+    )
 
 
 def _not_found_context(settings: Settings) -> dict:
@@ -37,28 +85,32 @@ def _not_found_context(settings: Settings) -> dict:
     }
 
 
+def not_found_response(request: Request, settings: Settings) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "import.html",
+        _not_found_context(settings),
+        status_code=404,
+    )
+
+
 def _recipe_context(
     *,
     settings: Settings,
-    stored: StoredExtraction,
-    bundle,
-    decisions,
+    prepared: PreparedRecipe,
     review_error: str | None = None,
     open_edit: str | None = None,
 ) -> dict:
-    canonicalize_findings(stored.result)
-    decisions = remap_review_decisions(decisions, stored.result)
-    working = apply_decisions(stored.result, decisions)
-    cards = build_review_cards(stored.result, working, decisions)
+    working = prepared.working
     return {
         "app_name": settings.app_name,
-        "stored": stored,
+        "stored": prepared.stored,
         "recipe": working,
-        "usage": stored.usage,
-        "bundle": bundle,
+        "usage": prepared.stored.usage,
+        "bundle": prepared.bundle,
         "ingredient_groups": group_listed_ingredients(working.ingredients),
-        "pending_review": [card for card in cards if card.decision is None],
-        "decided_review": [card for card in cards if card.decision is not None],
+        "pending_review": prepared.pending,
+        "decided_review": prepared.decided,
         "review_error": review_error,
         "open_edit": open_edit,
     }
@@ -72,26 +124,14 @@ def recipe_detail(
     db: Database = Depends(get_db),
     session_id: str = Depends(get_session_id),
 ) -> HTMLResponse:
-    stored = db.get_extraction_for_session(recipe_id, session_id)
-    if stored is None:
-        return templates.TemplateResponse(
-            request,
-            "import.html",
-            _not_found_context(settings),
-            status_code=404,
-        )
+    prepared = prepare_recipe(db, recipe_id, session_id)
+    if prepared is None:
+        return not_found_response(request, settings)
 
-    bundle = db.get_bundle_for_session(stored.bundle_id, session_id)
-    decisions = db.list_review_decisions(stored.id, session_id)
     return templates.TemplateResponse(
         request,
         "recipe.html",
-        _recipe_context(
-            settings=settings,
-            stored=stored,
-            bundle=bundle,
-            decisions=decisions,
-        ),
+        _recipe_context(settings=settings, prepared=prepared),
     )
 
 
@@ -110,20 +150,13 @@ def review_finding(
     db: Database = Depends(get_db),
     session_id: str = Depends(get_session_id),
 ):
-    stored = db.get_extraction_for_session(recipe_id, session_id)
-    if stored is None:
-        return templates.TemplateResponse(
-            request,
-            "import.html",
-            _not_found_context(settings),
-            status_code=404,
-        )
+    prepared = prepare_recipe(db, recipe_id, session_id)
+    if prepared is None:
+        return not_found_response(request, settings)
 
-    bundle = db.get_bundle_for_session(stored.bundle_id, session_id)
-    canonicalize_findings(stored.result)
     try:
         decision = parse_review_action(
-            result=stored.result,
+            result=prepared.stored.result,
             finding_id=finding_id,
             action=action,
             form={
@@ -135,15 +168,12 @@ def review_finding(
             },
         )
     except ReviewError as exc:
-        decisions = db.list_review_decisions(stored.id, session_id)
         return templates.TemplateResponse(
             request,
             "recipe.html",
             _recipe_context(
                 settings=settings,
-                stored=stored,
-                bundle=bundle,
-                decisions=decisions,
+                prepared=prepared,
                 review_error=exc.message,
                 open_edit=finding_id if action == "edit" else None,
             ),
@@ -151,7 +181,7 @@ def review_finding(
         )
 
     db.upsert_review_decision(
-        extraction_id=stored.id,
+        extraction_id=prepared.stored.id,
         session_id=session_id,
         decision=decision,
     )

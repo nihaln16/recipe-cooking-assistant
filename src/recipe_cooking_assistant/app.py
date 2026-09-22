@@ -9,6 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from recipe_cooking_assistant.config import Settings, get_settings
 from recipe_cooking_assistant.db import Database
 from recipe_cooking_assistant.extraction import ExtractionClient
+from recipe_cooking_assistant.routes.cook_routes import router as cook_router
 from recipe_cooking_assistant.routes.health import router as health_router
 from recipe_cooking_assistant.routes.import_routes import router as import_router
 from recipe_cooking_assistant.routes.recipe_routes import router as recipe_router
@@ -39,6 +40,7 @@ def create_app(
     app.include_router(health_router)
     app.include_router(import_router)
     app.include_router(recipe_router)
+    app.include_router(cook_router)
 
     app.add_middleware(
         SessionMiddleware,

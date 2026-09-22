@@ -1,19 +1,7 @@
 {% extends "base.html" %}
+{% from "_provenance.html" import provenance_badge %}
 
 {% block title %}{{ recipe.title or "Recipe" }} · {{ app_name }}{% endblock %}
-
-{% macro provenance_badge(item) %}
-  {% set badge = item | content_badge %}
-  {% if badge == "Needs review" %}
-  <span class="badge badge-review">Needs review</span>
-  {% elif badge == "User edit" %}
-  <span class="badge badge-edit">User edit</span>
-  {% elif badge == "AI suggestion" %}
-  <span class="badge badge-ai">AI suggestion</span>
-  {% else %}
-  <span class="badge badge-source">Source</span>
-  {% endif %}
-{% endmacro %}
 
 {% block content %}
 <section class="hero-block">
@@ -342,6 +330,9 @@
 {% endif %}
 
 <div class="actions">
+  {% if not pending_review %}
+  <a class="btn btn-primary" href="/recipes/{{ stored.id }}/cook">Start cooking</a>
+  {% endif %}
   <a class="btn btn-secondary" href="/">Import another</a>
 </div>
 {% endblock %}

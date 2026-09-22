@@ -541,3 +541,68 @@ code {
   min-height: 44px;
   font-weight: 400;
 }
+
+.btn:disabled,
+.btn:disabled:hover {
+  background: #e4e8e2;
+  color: #5c675b;
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.cook-hero {
+  margin-bottom: calc(var(--space) * 2);
+}
+
+.cook-progress {
+  margin: calc(var(--space) * 2) 0 var(--space);
+  font-weight: 600;
+}
+
+.cook-meter {
+  height: 8px;
+  border-radius: 999px;
+  background: #d5ddd2;
+  overflow: hidden;
+}
+
+.cook-meter-fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+.cook-step-card {
+  margin-bottom: calc(var(--space) * 3);
+}
+
+.cook-step {
+  margin: 0 0 var(--space);
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.cook-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space);
+  margin: calc(var(--space) * 3) calc(var(--space) * -2) calc(var(--space) * -2);
+  padding: calc(var(--space) * 2);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.cook-nav.is-stacked {
+  grid-template-columns: 1fr;
+}
+
+.cook-nav form {
+  margin: 0;
+}
+
+.cook-nav .btn {
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.0625rem;
+}

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% from "_provenance.html" import provenance_badge %}
+
+{% block title %}
+  {% if mode == "done" %}Cooking complete{% elif mode == "empty" %}No steps to cook{% elif mode == "step" %}Step {{ step_number }} of {{ step_count }}{% elif recipe %}{{ recipe.title or "Recipe" }}{% else %}Cooking{% endif %} · {{ app_name }}
+{% endblock %}
+
+{% block content %}
+{% if mode == "blocked" or mode == "invalid" %}
+<section class="hero-block">
+  <p class="eyebrow">Cooking</p>
+  <h1>{{ heading }}</h1>
+  {% if title %}<p class="lede">{{ title }}</p>{% endif %}
+</section>
+<div class="alert alert-error" role="alert">{{ message }}</div>
+<nav class="cook-nav is-stacked" aria-label="Leave cooking">
+  <a class="btn btn-primary" href="/recipes/{{ recipe_id }}">Back to recipe</a>
+</nav>
+
+{% elif mode == "empty" %}
+<section class="hero-block">
+  <p class="eyebrow">Cooking</p>
+  <h1>No steps to cook</h1>
+  <p class="lede">{{ recipe.title or "This recipe" }} has no directions to follow one at a time.</p>
+</section>
+<nav class="cook-nav is-stacked" aria-label="Leave cooking">
+  <a class="btn btn-primary" href="/recipes/{{ recipe_id }}">Back to recipe</a>
+</nav>
+
+{% elif mode == "done" %}
+<section class="hero-block">
+  <p class="eyebrow">Cooking</p>
+  <h1>Cooking complete</h1>
+  <p class="lede">{{ recipe.title or "This recipe" }} is finished for this session.</p>
+</section>
+<nav class="cook-nav is-stacked" aria-label="After cooking">
+  <a class="btn btn-primary" href="/recipes/{{ recipe_id }}">Back to recipe</a>
+  <form method="post" action="/recipes/{{ recipe_id }}/cook">
+    <input type="hidden" name="action" value="cook_again">
+    <button class="btn btn-secondary" type="submit">Cook again</button>
+  </form>
+</nav>
+
+{% else %}
+<div class="cook-copy">
+<section class="hero-block cook-hero">
+  <p class="eyebrow">Cooking</p>
+  <h1>{{ recipe.title or "Untitled recipe" }}</h1>
+  {% if recipe.servings %}
+  <p class="lede">Servings: {{ recipe.servings }}</p>
+  {% endif %}
+  <p class="cook-progress" id="cook-progress">Step {{ step_number }} of {{ step_count }}</p>
+  <div
+    class="cook-meter"
+    role="progressbar"
+    aria-valuemin="1"
+    aria-valuemax="{{ step_count }}"
+    aria-valuenow="{{ step_number }}"
+    aria-valuetext="Step {{ step_number }} of {{ step_count }}"
+    aria-labelledby="cook-progress"
+  >
+    <div class="cook-meter-fill" style="width: {{ (step_number / step_count * 100)|round(1) }}%"></div>
+  </div>
+</section>
+
+<article class="cook-step-card" aria-labelledby="cook-step-heading">
+  <h2 id="cook-step-heading" class="cook-step">{{ step.text }}</h2>
+  <div class="meta-row">
+    {{ provenance_badge(step) }}
+  </div>
+</article>
+
+{% if step_groups %}
+<section class="recipe-section" aria-label="Ingredients for this step">
+  <h2>For this step</h2>
+  <ul class="recipe-list">
+    {% for group_id, members in step_groups %}
+      {% if group_id and members|length > 1 %}
+      <li class="recipe-item alt-group">
+        <p class="alt-label muted">Choose one</p>
+        {% for item in members %}
+        <div class="alt-option">
+          <div class="recipe-item-main">{{ item | ingredient_line }}</div>
+          <div class="meta-row">{{ provenance_badge(item) }}</div>
+          {% if not loop.last %}<p class="alt-or">or</p>{% endif %}
+        </div>
+        {% endfor %}
+      </li>
+      {% else %}
+        {% for item in members %}
+        <li class="recipe-item">
+          <div class="recipe-item-main">{{ item | ingredient_line }}</div>
+          <div class="meta-row">
+            {% if item.optional %}<span class="badge">Optional</span>{% endif %}
+            {{ provenance_badge(item) }}
+          </div>
+        </li>
+        {% endfor %}
+      {% endif %}
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+</div>
+
+<nav class="cook-nav" aria-label="Step navigation">
+  <form method="post" action="/recipes/{{ recipe_id }}/cook">
+    <input type="hidden" name="action" value="back">
+    <input type="hidden" name="step" value="{{ step_number }}">
+    <button class="btn btn-secondary" type="submit" {% if step_number == 1 %}disabled{% endif %}>Back</button>
+  </form>
+  <form method="post" action="/recipes/{{ recipe_id }}/cook">
+    <input type="hidden" name="action" value="{% if step_number == step_count %}finish{% else %}next{% endif %}">
+    <input type="hidden" name="step" value="{{ step_number }}">
+    <button class="btn btn-primary" type="submit">{% if step_number == step_count %}Finish{% else %}Next{% endif %}</button>
+  </form>
+</nav>
+{% endif %}
+{% endblock %}

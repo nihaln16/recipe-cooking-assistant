@@ -4,7 +4,7 @@ Turn recipe text or screenshots into a structured recipe and an interactive, ste
 
 ## Status
 
-**Milestone 3 complete** (gap review UI: accept/edit/reject findings, original payload immutable). Cooking Mode, chat, and deploy are paused.
+**Milestone 4 complete** (mobile Cooking Mode from the reviewed working recipe). Chat, quick actions, and deploy are paused.
 
 See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for the full handoff.
 

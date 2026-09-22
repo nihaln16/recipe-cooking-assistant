@@ -1,6 +1,6 @@
 # Project status handoff — Recipe Cooking Assistant
 
-Handoff for a new Cursor agent. Last updated after **milestone 3 review UI**. **Do not expose `.env`, API keys, session secrets, copyrighted screenshots, or ignored local evaluation files.**
+Handoff for a new Cursor agent. Last updated after **milestone 4 Cooking Mode**. **Do not expose `.env`, API keys, session secrets, copyrighted screenshots, or ignored local evaluation files.**
 
 ## User problem and V1 scope
 
@@ -10,7 +10,7 @@ Handoff for a new Cursor agent. Last updated after **milestone 3 review UI**. **
 1. Paste recipe/caption text and/or upload multiple screenshots of the same recipe.
 2. Multimodal extraction → structured ingredients, quantities, steps, notes, uncertainties; retain original source.
 3. Detect gaps/inconsistencies; user accept/edit/reject on the recipe page (**milestone 3, done**).
-4. Clean recipe view + mobile Cooking Mode (milestone 4+, **not started**).
+4. Mobile Cooking Mode from the reviewed working recipe (**milestone 4, done**).
 5. Contextual quick actions + freeform grounded chat (later).
 
 **Hard rules:**
@@ -22,7 +22,7 @@ Handoff for a new Cursor agent. Last updated after **milestone 3 review UI**. **
 
 ## Intentionally deferred
 
-- Cooking Mode / chat / deploy / broad visual redesign
+- Chat / contextual quick actions / timers / voice / accounts / saved library / deploy / broad visual redesign
 - LLM-generated quantity/substitution patches (review uses deterministic recommendations only)
 - Social scraping, share integration, accounts, saved library, custom OCR/CV, advanced personalization
 - In-progress cooking photo analysis
@@ -45,9 +45,10 @@ Handoff for a new Cursor agent. Last updated after **milestone 3 review UI**. **
 | `src/recipe_cooking_assistant/normalize.py` | Post-extract normalization, findings |
 | `src/recipe_cooking_assistant/quantity_consistency.py` | List-vs-step contradiction + source-amount parse |
 | `src/recipe_cooking_assistant/review.py` | Working-recipe overlay from review decisions |
+| `src/recipe_cooking_assistant/cooking.py` | Step cursor, session progress, listed-id ingredient links |
 | `src/recipe_cooking_assistant/ingredient_display.py` | Qualifiers, alternatives grouping, display lines |
 | `src/recipe_cooking_assistant/db.py` | SQLite: bundles, extractions, `review_decisions` |
-| `src/recipe_cooking_assistant/routes/` | Import + recipe + review HTML routes |
+| `src/recipe_cooking_assistant/routes/` | Import, recipe, review, and cooking HTML routes |
 | `evals/harness/` | Deterministic + live eval runners/assertions |
 | `evals/cases/*/case.json` | Eval cases + expects |
 | `evals/local/` | **Gitignored** private/synthetic images for manual live runs |
@@ -59,7 +60,8 @@ Handoff for a new Cursor agent. Last updated after **milestone 3 review UI**. **
 1. **App shell + import UI** — sessions, uploads, limits, temporary storage
 2. **Extraction + eval harness** — messy sources, provenance, findings, semantic normalization, deterministic/live evals, contradiction post-validation
 3. **Gap review UI** — accept/edit/reject findings on `/recipes/{id}`; original payload immutable; working recipe derived at read time
-4. **Not started:** Cooking Mode, chat, deployment packaging
+4. **Cooking Mode** — one reviewed step at a time after findings are decided; session-scoped progress
+5. **Not started:** chat, quick actions, deployment packaging
 
 ## Provenance and review
 
@@ -89,7 +91,7 @@ Handoff for a new Cursor agent. Last updated after **milestone 3 review UI**. **
 - POST `/recipes/{id}/review/{finding_id}` (session-scoped); 404 for other sessions; 400 on invalid action/fields
 - Original `extracted_recipes.payload_json` is never updated. Working recipe = original + accepted/edited decisions
 - Rejected decisions remain visible under **Decided** and are not applied
-- No Cooking Mode CTA
+- **Start cooking** appears when `pending_review` is empty, including recipes that never had findings
 
 ## Evaluation commands
 
@@ -130,7 +132,7 @@ Uses Responses API only. Results → `evals/results/` (gitignored). Copyrighted 
 
 ## Current passing counts
 
-- **49** pytest tests passed
+- **57** pytest tests passed
 - **16/16** deterministic eval cases passed
 
 ## Milestone 3 follow-up (duplicate findings)
@@ -141,9 +143,20 @@ Review queue is `result.findings` after `canonicalize_findings` in `normalize_re
 
 **Parmesan on the live Creamy Tomato extract** (`finish with grated Parmesan`) was **absent from extraction**, not dropped later. The step text includes Parmesan but `related_ingredient_ids` pointed at penne; no Parmesan ingredient row exists. Do not invent a quantity. Repairing that requires a new extract (or a later gap detector), not a review-queue fix.
 
+## Milestone 4 cooking behavior
+
+- **Start cooking** on `/recipes/{id}` when no finding is pending. `GET /recipes/{id}/cook` resumes this browser session.
+- `GET /recipes/{id}/cook/{n}` shows step `n`. `POST /recipes/{id}/cook` handles Back, Next, Finish, and Cook again.
+- Each request reads `prepare_recipe()` → `apply_decisions()`. `payload_json` is not updated. Rejected decisions are not applied.
+- Step ingredients come from `related_ingredient_ids` that resolve to listed working ingredients, including that ingredient’s alternative group. Step text is not scanned for extra links.
+- Progress is `{index, done}` in the signed session cookie, keyed by recipe id. An invalid step URL returns 400 and does not replace a valid cursor.
+- Unresolved review returns 400 with **Back to recipe**. It does not accept, edit, or reject findings.
+- Expired recipes and other sessions get the same 404 as the recipe page.
+- Zero steps: empty cooking page. One step: Back disabled, Finish. Last step: Finish. Completion links back to the reviewed recipe.
+
 ## Exact next recommended task
 
-**Milestone 4: Cooking Mode** (only after the user explicitly asks). Use the working (reviewed) recipe, not rejected suggestions. Do not start chat, deploy, or paid evals unless asked.
+**Do not start the next product slice unless the user asks.** Next planned slice is contextual quick actions and grounded chat, using the working recipe and the current cooking step. No paid evals unless asked.
 
 Optional later: targeted live re-run of `CONTRADICTION_QUANTITY` or Creamy Tomato after user approval.
 

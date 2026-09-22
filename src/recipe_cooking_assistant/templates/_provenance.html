@@ -1,0 +1,12 @@
+{% macro provenance_badge(item) %}
+  {% set badge = item | content_badge %}
+  {% if badge == "Needs review" %}
+  <span class="badge badge-review">Needs review</span>
+  {% elif badge == "User edit" %}
+  <span class="badge badge-edit">User edit</span>
+  {% elif badge == "AI suggestion" %}
+  <span class="badge badge-ai">AI suggestion</span>
+  {% else %}
+  <span class="badge badge-source">Source</span>
+  {% endif %}
+{% endmacro %}
