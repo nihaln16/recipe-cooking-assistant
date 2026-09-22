@@ -1,0 +1,14 @@
+[project]
+name = "recipe-cooking-assistant"
+version = "0.1.0"
+description = "Interactive cooking assistant for recipes imported from text and screenshots"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+recipe-cooking-assistant = "recipe_cooking_assistant:main"
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"
