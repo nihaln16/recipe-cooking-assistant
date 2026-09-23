@@ -1,10 +1,10 @@
 # Render Blueprint. Secret values are not stored in this file.
-# Free web services have an ephemeral disk: SQLite and uploads disappear on restart.
+# No persistent disk is attached: SQLite and uploads disappear on restart.
 services:
   - type: web
     name: recipe-cooking-assistant
     runtime: python
-    plan: free
+    plan: 0.5c-512mb
     branch: main
     autoDeployTrigger: checksPass
     healthCheckPath: /health

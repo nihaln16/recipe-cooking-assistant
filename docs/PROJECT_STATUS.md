@@ -158,14 +158,14 @@ Review queue is `result.findings` after `canonicalize_findings` in `normalize_re
 
 ## Milestone 5 deployment
 
-- Blueprint: `render.yaml`. Branch `main`. `autoDeployTrigger: checksPass`. Plan `free`. Health path `/health`.
+- Blueprint: `render.yaml`. Branch `main`. `autoDeployTrigger: checksPass`. Plan `0.5c-512mb`. Health path `/health`.
 - Build: `pip install uv && uv sync --frozen --no-dev`
 - Start: `uv run uvicorn recipe_cooking_assistant.app:app --host 0.0.0.0 --port $PORT --proxy-headers`
 - Local `uv run recipe-cooking-assistant` still binds `127.0.0.1:8000` with reload. On Render it binds `0.0.0.0` and `$PORT`.
 - Required env names: `OPENAI_API_KEY` (dashboard, `sync: false`), `SESSION_SECRET` (Render `generateValue`). Also set in the blueprint, not secret: `OPENAI_MODEL=gpt-4.1-mini`, `SESSION_TTL_HOURS=24`, `MAX_IMAGES=6`, `MAX_UPLOAD_BYTES=4194304`, `DATA_DIR=/tmp/recipe-cooking-assistant`, `PYTHON_VERSION=3.11.11`.
 - `GET /health` returns `{"status":"ok"}` and does not call OpenAI.
 - CI: `.github/workflows/ci.yml` runs `uv run pytest` and `uv run python evals/run_deterministic_eval.py` on push to `main` and on pull requests. It does not set `OPENAI_API_KEY` and does not run live evals.
-- **Ephemeral disk:** Render free instances have no persistent disk. SQLite (`DATA_DIR/app.db`) and `uploads/` disappear on restart or redeploy. Session cookies and old `/recipes/{id}` links then 404. Startup still purges expired rows and deletes their files when the process is still the same disk. `uploads/`, `*.db`, and `.env` stay gitignored.
+- **Ephemeral disk:** No persistent disk is attached. SQLite (`DATA_DIR/app.db`) and `uploads/` disappear on restart or redeploy. Session cookies and old `/recipes/{id}` links then 404. Startup still purges expired rows and deletes their files when the process is still the same disk. `uploads/`, `*.db`, and `.env` stay gitignored.
 - **Import cap (in-memory, this process only):** 8 imports per client per hour and 30 per process per hour, checked before extraction. A restart clears the counters. Empty import submissions do not count. An OpenAI project budget or usage alert is a separate notice to configure in the OpenAI dashboard; this repo does not verify that it hard-stops spending. The key must stay restricted to `/v1/responses`.
 - Unhandled errors return a generic HTML message. Logs redact `sk-` keys, image data URLs, and absolute home/tmp paths.
 

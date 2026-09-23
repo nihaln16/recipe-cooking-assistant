@@ -31,7 +31,7 @@ uv run uvicorn recipe_cooking_assistant.app:app --host 0.0.0.0 --port $PORT --pr
 
 Health check path: `GET /health`. It does not call OpenAI.
 
-Set `OPENAI_API_KEY` and `SESSION_SECRET` in the Render dashboard. Do not commit them. On Render’s free plan, SQLite and uploaded files are deleted when the instance restarts, so old recipe links stop working.
+Set `OPENAI_API_KEY` and `SESSION_SECRET` in the Render dashboard. Do not commit them. The blueprint uses compute plan `0.5c-512mb`. SQLite and uploaded files are deleted when the instance restarts, so old recipe links stop working.
 
 ## Tests (free / CI-safe)
 
