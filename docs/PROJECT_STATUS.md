@@ -1,6 +1,6 @@
 # Project status handoff — Recipe Cooking Assistant
 
-Handoff for a new Cursor agent. Last updated after **milestone 5 deployment preparation**. **Do not expose `.env`, API keys, session secrets, copyrighted screenshots, or ignored local evaluation files.**
+Handoff for a new Cursor agent. Last updated after **milestone 6 grounded cooking conversation**. **Do not expose `.env`, API keys, session secrets, copyrighted screenshots, or ignored local evaluation files.**
 
 ## User problem and V1 scope
 
@@ -11,7 +11,7 @@ Handoff for a new Cursor agent. Last updated after **milestone 5 deployment prep
 2. Multimodal extraction → structured ingredients, quantities, steps, notes, uncertainties; retain original source.
 3. Detect gaps/inconsistencies; user accept/edit/reject on the recipe page (**milestone 3, done**).
 4. Mobile Cooking Mode from the reviewed working recipe (**milestone 4, done**).
-5. Contextual quick actions + freeform grounded chat (later).
+5. Contextual quick actions + freeform grounded chat inside Cooking Mode (**milestone 6, done**).
 
 **Hard rules:**
 - Do not invent a recipe from a finished-dish photo alone → `insufficient_source`.
@@ -22,7 +22,7 @@ Handoff for a new Cursor agent. Last updated after **milestone 5 deployment prep
 
 ## Intentionally deferred
 
-- Chat / contextual quick actions / timers / voice / accounts / saved library / broad visual redesign
+- Timers, voice, accounts, saved library, broad visual redesign, and the Apple-design review of Cooking Mode
 - Creating the Render service, GitHub secrets, or an OpenAI budget (the blueprint is in-repo; the user creates the service)
 - LLM-generated quantity/substitution patches (review uses deterministic recommendations only)
 - Social scraping, share integration, accounts, saved library, custom OCR/CV, advanced personalization
@@ -46,9 +46,10 @@ Handoff for a new Cursor agent. Last updated after **milestone 5 deployment prep
 | `src/recipe_cooking_assistant/normalize.py` | Post-extract normalization, findings |
 | `src/recipe_cooking_assistant/quantity_consistency.py` | List-vs-step contradiction + source-amount parse |
 | `src/recipe_cooking_assistant/review.py` | Working-recipe overlay from review decisions |
-| `src/recipe_cooking_assistant/cooking.py` | Step cursor, session progress, listed-id ingredient links |
+| `src/recipe_cooking_assistant/cooking.py` | Step cursor, session progress, listed-id ingredient links, one-time guide token |
+| `src/recipe_cooking_assistant/guidance.py` | Grounded Responses API guidance client, context bounds, navigation phrases |
 | `src/recipe_cooking_assistant/ingredient_display.py` | Qualifiers, alternatives grouping, display lines |
-| `src/recipe_cooking_assistant/db.py` | SQLite: bundles, extractions, `review_decisions` |
+| `src/recipe_cooking_assistant/db.py` | SQLite: bundles, extractions, `review_decisions`, `cook_messages` |
 | `src/recipe_cooking_assistant/routes/` | Import, recipe, review, and cooking HTML routes |
 | `evals/harness/` | Deterministic + live eval runners/assertions |
 | `evals/cases/*/case.json` | Eval cases + expects |
@@ -63,7 +64,7 @@ Handoff for a new Cursor agent. Last updated after **milestone 5 deployment prep
 3. **Gap review UI** — accept/edit/reject findings on `/recipes/{id}`; original payload immutable; working recipe derived at read time
 4. **Cooking Mode** — one reviewed step at a time after findings are decided; session-scoped progress
 5. **Deployment preparation** — `render.yaml`, `GET /health`, GitHub Actions free tests. The Render service itself is not created.
-6. **Not started:** chat, quick actions
+6. **Cooking conversation** — freeform questions and quick actions on each Cooking Mode step, grounded on the reviewed working recipe
 
 ## Provenance and review
 
@@ -134,7 +135,7 @@ Uses Responses API only. Results → `evals/results/` (gitignored). Copyrighted 
 
 ## Current passing counts
 
-- **69** pytest tests passed
+- **87** pytest tests passed
 - **16/16** deterministic eval cases passed
 
 ## Milestone 3 follow-up (duplicate findings)
@@ -169,9 +170,21 @@ Review queue is `result.findings` after `canonicalize_findings` in `normalize_re
 - **Import cap (in-memory, this process only):** 8 imports per client per hour and 30 per process per hour, checked before extraction. A restart clears the counters. Empty import submissions do not count. An OpenAI project budget or usage alert is a separate notice to configure in the OpenAI dashboard; this repo does not verify that it hard-stops spending. The key must stay restricted to `/v1/responses`.
 - Unhandled errors return a generic HTML message. Logs redact `sk-` keys, image data URLs, and absolute home/tmp paths.
 
+## Milestone 6 cooking conversation
+
+- Each cooking step has quick actions, the current step’s conversation, a question field, and Send. Quick actions submit fixed questions through the same `POST /recipes/{id}/cook/{n}/guide` path as typed text. There are no separate hard-coded answers.
+- One Responses API call per non-navigation question, via `OpenAIGuidanceClient` (`client.responses.create`, `store=false`, no tools). Model stays `gpt-4.1-mini`. Tests inject a mock client and do not call OpenAI.
+- Context is the reviewed working recipe from `prepare_recipe()` / `apply_decisions()`: title, servings, current step, linked listed ingredients, listed ingredients, steps, creator notes, and a bounded recent transcript. Provenance is `source` or `user_edit`. Rejected findings, rejected additions, ignored boilerplate, evidence quotes, raw caption text, image paths, secrets, and cost fields are omitted.
+- The model reply is stored as plain text and rendered escaped under the label **AI guidance**. It is not written into `payload_json`, review decisions, or the working recipe.
+- Explicit phrases only (`next`, `next step`, `continue`, `back`, `go back`, `previous`, `previous step`, `repeat this step`, `start over`, `finish`, `finish cooking`) move the existing cursor and make no model call. Any other wording, including questions that contain those words, is a question.
+- Messages live in SQLite `cook_messages`, keyed by recipe, owner session, and step. Another browser session cannot load the recipe, so it cannot read the history. Revisiting a step shows that step’s messages. The model also sees at most 12 current-step messages and, until the step already has two user turns, two messages from other steps. Storage keeps 24 messages per step and 80 per recipe. Rows cascade-delete when the recipe expires. The session cookie stores only the cooking cursor and one guide token.
+- A separate in-memory limiter runs before the guidance client: 20 questions per session per hour and 60 per process per hour (`GUIDANCE_LIMIT_PER_SESSION`, `GUIDANCE_LIMIT_PER_PROCESS`, `GUIDANCE_LIMIT_WINDOW_SECONDS`). Navigation, empty input, oversized input, invalid quick actions, and duplicate replays are not charged. The import limiter is unchanged.
+- Empty, oversized, invalid, rate-limited, unconfigured, and failed model requests keep the recipe, step, and earlier messages. Failures show a short recoverable error and do not store an assistant reply. User and model HTML is escaped.
+- Known limits: history is ephemeral with the recipe; the process limiter resets on restart; the model can still give imperfect cooking advice; appearance is not treated as proof of food safety in the prompt, but the app cannot verify the model obeyed; this slice does not redesign Cooking Mode.
+
 ## Exact next recommended task
 
-**Do not start the next product slice unless the user asks.** Next planned slice is contextual quick actions and grounded chat. Do not create the Render service unless the user asks. No paid evals unless asked.
+**Apple-design review of Cooking Mode.** Do not start it unless the user asks. Do not deploy, commit, or run a paid model call unless the user asks.
 
 Optional later: targeted live re-run of `CONTRADICTION_QUANTITY` or Creamy Tomato after user approval.
 

@@ -4,7 +4,7 @@ Turn recipe text or screenshots into a structured recipe and an interactive, ste
 
 ## Status
 
-**Milestone 5 prepared** (Render blueprint and GitHub Actions). The Render service is not created yet. Chat and quick actions are paused.
+**Cooking Mode** includes step navigation and a grounded cooking conversation. A visual design review has not started.
 
 See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for the full handoff.
 

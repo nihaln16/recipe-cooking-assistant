@@ -18,6 +18,67 @@ from recipe_cooking_assistant.models import (
 )
 
 
+def _cook_message(row: sqlite3.Row) -> CookMessage:
+    return CookMessage(
+        id=row["id"],
+        step_number=row["step_number"],
+        role=row["role"],
+        body=row["body"],
+        created_at=row["created_at"],
+    )
+
+
+def _trim_cook_messages(
+    conn: sqlite3.Connection,
+    *,
+    extraction_id: str,
+    session_id: str,
+    step_number: int,
+    max_per_step: int,
+    max_per_recipe: int,
+) -> None:
+    conn.execute(
+        """
+        DELETE FROM cook_messages
+        WHERE extraction_id = ? AND session_id = ? AND step_number = ?
+          AND id NOT IN (
+            SELECT id FROM cook_messages
+            WHERE extraction_id = ? AND session_id = ? AND step_number = ?
+            ORDER BY id DESC
+            LIMIT ?
+          )
+        """,
+        (
+            extraction_id,
+            session_id,
+            step_number,
+            extraction_id,
+            session_id,
+            step_number,
+            max_per_step,
+        ),
+    )
+    conn.execute(
+        """
+        DELETE FROM cook_messages
+        WHERE extraction_id = ? AND session_id = ?
+          AND id NOT IN (
+            SELECT id FROM cook_messages
+            WHERE extraction_id = ? AND session_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+          )
+        """,
+        (
+            extraction_id,
+            session_id,
+            extraction_id,
+            session_id,
+            max_per_recipe,
+        ),
+    )
+
+
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -28,6 +89,15 @@ def isoformat(dt: datetime) -> str:
 
 def parse_iso(value: str) -> datetime:
     return datetime.fromisoformat(value)
+
+
+@dataclass
+class CookMessage:
+    id: int
+    step_number: int
+    role: str
+    body: str
+    created_at: str
 
 
 @dataclass
@@ -135,6 +205,20 @@ class Database:
                 );
                 CREATE INDEX IF NOT EXISTS idx_review_extraction
                     ON review_decisions(extraction_id);
+
+                CREATE TABLE IF NOT EXISTS cook_messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    extraction_id TEXT NOT NULL,
+                    session_id TEXT NOT NULL,
+                    step_number INTEGER NOT NULL,
+                    role TEXT NOT NULL,
+                    body TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (extraction_id) REFERENCES extracted_recipes(id)
+                        ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_cook_messages_lookup
+                    ON cook_messages(extraction_id, session_id, step_number, id);
                 """
             )
             cols = {
@@ -418,6 +502,101 @@ class Database:
                     payload,
                     decided_at,
                 ),
+            )
+
+    def list_cook_messages(
+        self, extraction_id: str, session_id: str, step_number: int | None = None
+    ) -> list[CookMessage]:
+        query = """
+            SELECT id, step_number, role, body, created_at
+            FROM cook_messages
+            WHERE extraction_id = ? AND session_id = ?
+        """
+        params: list[object] = [extraction_id, session_id]
+        if step_number is not None:
+            query += " AND step_number = ?"
+            params.append(step_number)
+        query += " ORDER BY id ASC"
+        with self.connect() as conn:
+            rows = conn.execute(query, params).fetchall()
+        return [_cook_message(row) for row in rows]
+
+    def latest_cook_user_message(
+        self, extraction_id: str, session_id: str, step_number: int
+    ) -> CookMessage | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT id, step_number, role, body, created_at
+                FROM cook_messages
+                WHERE extraction_id = ? AND session_id = ? AND step_number = ?
+                  AND role = 'user'
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (extraction_id, session_id, step_number),
+            ).fetchone()
+        if row is None:
+            return None
+        return _cook_message(row)
+
+    def earlier_cook_messages(
+        self,
+        extraction_id: str,
+        session_id: str,
+        step_number: int,
+        *,
+        limit: int,
+    ) -> list[CookMessage]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, step_number, role, body, created_at
+                FROM cook_messages
+                WHERE extraction_id = ? AND session_id = ? AND step_number != ?
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (extraction_id, session_id, step_number, limit),
+            ).fetchall()
+        return [_cook_message(row) for row in reversed(rows)]
+
+    def append_cook_exchange(
+        self,
+        *,
+        extraction_id: str,
+        session_id: str,
+        step_number: int,
+        user_text: str,
+        assistant_text: str,
+        max_per_step: int,
+        max_per_recipe: int,
+    ) -> None:
+        created_at = isoformat(utcnow())
+        with self.connect() as conn:
+            for role, body in (("user", user_text), ("assistant", assistant_text)):
+                conn.execute(
+                    """
+                    INSERT INTO cook_messages (
+                        extraction_id, session_id, step_number, role, body, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        extraction_id,
+                        session_id,
+                        step_number,
+                        role,
+                        body,
+                        created_at,
+                    ),
+                )
+            _trim_cook_messages(
+                conn,
+                extraction_id=extraction_id,
+                session_id=session_id,
+                step_number=step_number,
+                max_per_step=max_per_step,
+                max_per_recipe=max_per_recipe,
             )
 
     def purge_expired(self) -> list[str]:

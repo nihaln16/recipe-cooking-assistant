@@ -606,3 +606,85 @@ code {
   min-height: 56px;
   font-size: 1.0625rem;
 }
+
+.cook-guide {
+  margin: calc(var(--space) * 3) 0;
+}
+
+.cook-guide h2 {
+  margin: 0 0 calc(var(--space) * 2);
+  font-size: 1.125rem;
+}
+
+.cook-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+  margin-bottom: calc(var(--space) * 2);
+}
+
+.cook-msg {
+  margin: 0;
+  padding: calc(var(--space) * 1.5);
+  border-radius: var(--radius);
+}
+
+.cook-msg p {
+  margin: 0;
+}
+
+.cook-msg-user {
+  background: var(--info-bg);
+}
+
+.cook-msg-ai {
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.cook-msg-label {
+  margin-bottom: calc(var(--space) * 0.5);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cook-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space);
+  margin-bottom: calc(var(--space) * 2);
+}
+
+.cook-quick .btn {
+  width: auto;
+  min-height: 44px;
+}
+
+.cook-ask label {
+  display: block;
+  margin-bottom: var(--space);
+  font-weight: 600;
+}
+
+.cook-ask textarea {
+  width: 100%;
+  min-height: 5rem;
+  padding: calc(var(--space) * 1.5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+.cook-status {
+  min-height: 1.25rem;
+  margin: var(--space) 0;
+  color: var(--ink-muted);
+}
+
+.cook-ask .btn {
+  min-height: 44px;
+}

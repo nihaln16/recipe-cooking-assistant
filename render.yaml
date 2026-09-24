@@ -23,6 +23,12 @@ services:
         value: "4194304"
       - key: DATA_DIR
         value: /tmp/recipe-cooking-assistant
+      - key: GUIDANCE_LIMIT_PER_SESSION
+        value: "20"
+      - key: GUIDANCE_LIMIT_PER_PROCESS
+        value: "60"
+      - key: GUIDANCE_LIMIT_WINDOW_SECONDS
+        value: "3600"
       - key: SESSION_SECRET
         generateValue: true
       - key: OPENAI_API_KEY

@@ -7,14 +7,38 @@ from recipe_cooking_assistant.config import Settings
 from recipe_cooking_assistant.cooking import (
     CookCursor,
     CookNavigationError,
+    apply_navigation,
+    consume_guide_token,
     cursor_for,
     ingredients_for_step,
+    issue_guide_token,
     parse_step_number,
     resume_index,
     store_cursor,
 )
-from recipe_cooking_assistant.db import Database
+from recipe_cooking_assistant.db import Database, parse_iso, utcnow
 from recipe_cooking_assistant.deps import get_db, get_session_id, get_settings
+from recipe_cooking_assistant.guidance import (
+    DUPLICATE_WINDOW_SECONDS,
+    EMPTY_MESSAGE,
+    INVALID_QUICK_MESSAGE,
+    MAX_EARLIER_MESSAGES,
+    MAX_GUIDANCE_CHARS,
+    MAX_STORED_PER_RECIPE,
+    MAX_STORED_PER_STEP,
+    MAX_USER_CHARS,
+    OVERSIZE_MESSAGE,
+    QUICK_ACTIONS,
+    RATE_LIMIT_MESSAGE,
+    SAFE_GUIDANCE_ERROR,
+    UNCONFIGURED_GUIDANCE,
+    GuidanceError,
+    OpenAIGuidanceClient,
+    build_model_context,
+    navigation_command,
+    quick_action_text,
+)
+from recipe_cooking_assistant.import_limit import ImportLimiter
 from recipe_cooking_assistant.routes.recipe_routes import not_found_response, prepare_recipe
 from recipe_cooking_assistant.templating import create_templates
 
@@ -151,17 +175,12 @@ def cook_step(
         prepared.stored.id,
         CookCursor(index=number - 1, done=False),
     )
-    step = steps[number - 1]
-    return _page(
+    return _render_step(
         request,
         settings,
-        mode="step",
-        recipe_id=prepared.stored.id,
-        recipe=prepared.working,
-        step=step,
-        step_number=number,
-        step_count=len(steps),
-        step_groups=ingredients_for_step(prepared.working, step.related_ingredient_ids),
+        db,
+        prepared,
+        number,
     )
 
 
@@ -211,27 +230,272 @@ def cook_action(
     if not steps or number > len(steps):
         return _invalid(request, settings, recipe_key, prepared.working.title)
 
-    if action == "back":
-        target = max(1, number - 1)
-        store_cursor(
-            request.session, recipe_key, CookCursor(index=target - 1, done=False)
-        )
-        return RedirectResponse(
-            url=f"/recipes/{recipe_key}/cook/{target}", status_code=303
-        )
-
-    if action == "finish" or number == len(steps):
-        store_cursor(
+    try:
+        target = apply_navigation(
             request.session,
             recipe_key,
-            CookCursor(index=number - 1, done=True),
+            number,
+            len(steps),
+            action,
         )
-        return RedirectResponse(url=f"/recipes/{recipe_key}/cook", status_code=303)
+    except CookNavigationError:
+        return _invalid(request, settings, recipe_key, prepared.working.title)
+    return RedirectResponse(url=f"/recipes/{recipe_key}{target}", status_code=303)
 
-    target = number + 1
-    store_cursor(
-        request.session, recipe_key, CookCursor(index=target - 1, done=False)
+
+def _render_step(
+    request: Request,
+    settings: Settings,
+    db: Database,
+    prepared,
+    number: int,
+    *,
+    status_code: int = 200,
+    guide_error: str | None = None,
+    guide_draft: str = "",
+):
+    step = prepared.working.steps[number - 1]
+    messages = db.list_cook_messages(prepared.stored.id, prepared.stored.session_id, number)
+    return _page(
+        request,
+        settings,
+        status_code=status_code,
+        mode="step",
+        recipe_id=prepared.stored.id,
+        recipe=prepared.working,
+        step=step,
+        step_number=number,
+        step_count=len(prepared.working.steps),
+        step_groups=ingredients_for_step(
+            prepared.working, step.related_ingredient_ids
+        ),
+        messages=messages,
+        quick_actions=QUICK_ACTIONS,
+        form_token=issue_guide_token(request.session, prepared.stored.id),
+        guide_error=guide_error,
+        guide_draft=guide_draft,
+    )
+
+
+def _guidance_client(request: Request, settings: Settings):
+    client = request.app.state.guidance_client
+    if client is not None:
+        return client
+    if not settings.openai_api_key:
+        return None
+    return OpenAIGuidanceClient(settings.openai_api_key)
+
+
+def _recent_duplicate(db: Database, extraction_id: str, session_id: str, number: int, text: str) -> bool:
+    latest = db.latest_cook_user_message(extraction_id, session_id, number)
+    if latest is None or latest.body != text:
+        return False
+    age = (utcnow() - parse_iso(latest.created_at)).total_seconds()
+    return 0 <= age <= DUPLICATE_WINDOW_SECONDS
+
+
+@router.post("/recipes/{recipe_id}/cook/{step_token}/guide", response_class=HTMLResponse)
+def cook_guide(
+    request: Request,
+    recipe_id: str,
+    step_token: str,
+    message: str = Form(default=""),
+    quick_action: str = Form(default=""),
+    form_token: str = Form(default=""),
+    settings: Settings = Depends(get_settings),
+    db: Database = Depends(get_db),
+    session_id: str = Depends(get_session_id),
+):
+    prepared = prepare_recipe(db, recipe_id, session_id)
+    if prepared is None:
+        return not_found_response(request, settings)
+    if prepared.pending:
+        return _blocked(request, settings, prepared.stored.id)
+
+    recipe_key = prepared.stored.id
+    steps = prepared.working.steps
+    try:
+        number = parse_step_number(step_token)
+    except CookNavigationError:
+        return _invalid(request, settings, recipe_key, prepared.working.title)
+    if not steps or number > len(steps):
+        return _invalid(request, settings, recipe_key, prepared.working.title)
+
+    if not consume_guide_token(request.session, recipe_key, form_token):
+        cursor = cursor_for(request.session, recipe_key)
+        if cursor.done or not steps:
+            return RedirectResponse(url=f"/recipes/{recipe_key}/cook", status_code=303)
+        index = resume_index(cursor, len(steps))
+        return RedirectResponse(
+            url=f"/recipes/{recipe_key}/cook/{index + 1}",
+            status_code=303,
+        )
+
+    action_key = (quick_action or "").strip()
+    if action_key:
+        question = quick_action_text(action_key)
+        if question is None:
+            return _render_step(
+                request,
+                settings,
+                db,
+                prepared,
+                number,
+                status_code=400,
+                guide_error=INVALID_QUICK_MESSAGE,
+                guide_draft=message,
+            )
+    else:
+        question = message or ""
+
+    command = navigation_command(question)
+    if command is not None:
+        try:
+            target = apply_navigation(
+                request.session, recipe_key, number, len(steps), command
+            )
+        except CookNavigationError:
+            return _invalid(request, settings, recipe_key, prepared.working.title)
+        return RedirectResponse(
+            url=f"/recipes/{recipe_key}{target}", status_code=303
+        )
+
+    stripped = " ".join(question.split()).strip()
+    if not stripped:
+        return _render_step(
+            request,
+            settings,
+            db,
+            prepared,
+            number,
+            status_code=400,
+            guide_error=EMPTY_MESSAGE,
+        )
+    if len(stripped) > MAX_USER_CHARS:
+        return _render_step(
+            request,
+            settings,
+            db,
+            prepared,
+            number,
+            status_code=400,
+            guide_error=OVERSIZE_MESSAGE,
+            guide_draft=stripped,
+        )
+
+    if _recent_duplicate(db, recipe_key, session_id, number, stripped):
+        return RedirectResponse(
+            url=f"/recipes/{recipe_key}/cook/{number}",
+            status_code=303,
+        )
+
+    client = _guidance_client(request, settings)
+    if client is None:
+        return _render_step(
+            request,
+            settings,
+            db,
+            prepared,
+            number,
+            status_code=503,
+            guide_error=UNCONFIGURED_GUIDANCE,
+            guide_draft=stripped,
+        )
+
+    limiter: ImportLimiter = request.app.state.guidance_limiter
+    allowed = limiter.allow(
+        session_id,
+        per_client=settings.guidance_limit_per_session,
+        per_process=settings.guidance_limit_per_process,
+        window_seconds=settings.guidance_limit_window_seconds,
+    )
+    if not allowed:
+        return _render_step(
+            request,
+            settings,
+            db,
+            prepared,
+            number,
+            status_code=429,
+            guide_error=RATE_LIMIT_MESSAGE,
+            guide_draft=stripped,
+        )
+
+    current = [
+        {"role": item.role, "text": item.body}
+        for item in db.list_cook_messages(recipe_key, session_id, number)
+    ]
+    user_turns = sum(1 for item in current if item["role"] == "user")
+    current.append({"role": "user", "text": stripped})
+    earlier = []
+    if user_turns < 2:
+        earlier = [
+            {
+                "step_number": item.step_number,
+                "role": item.role,
+                "text": item.body,
+            }
+            for item in db.earlier_cook_messages(
+                recipe_key,
+                session_id,
+                number,
+                limit=MAX_EARLIER_MESSAGES,
+            )
+        ]
+    context = build_model_context(
+        prepared.working,
+        step_number=number,
+        current_messages=current,
+        earlier_messages=earlier,
+    )
+    try:
+        guidance = client.advise(context=context, settings=settings)
+    except GuidanceError:
+        return _render_step(
+            request,
+            settings,
+            db,
+            prepared,
+            number,
+            status_code=502,
+            guide_error=SAFE_GUIDANCE_ERROR,
+            guide_draft=stripped,
+        )
+    except Exception:
+        return _render_step(
+            request,
+            settings,
+            db,
+            prepared,
+            number,
+            status_code=502,
+            guide_error=SAFE_GUIDANCE_ERROR,
+            guide_draft=stripped,
+        )
+
+    cleaned = " ".join(guidance.split()).strip()
+    if not cleaned or len(cleaned) > MAX_GUIDANCE_CHARS:
+        return _render_step(
+            request,
+            settings,
+            db,
+            prepared,
+            number,
+            status_code=502,
+            guide_error=SAFE_GUIDANCE_ERROR,
+            guide_draft=stripped,
+        )
+
+    db.append_cook_exchange(
+        extraction_id=recipe_key,
+        session_id=session_id,
+        step_number=number,
+        user_text=stripped,
+        assistant_text=cleaned,
+        max_per_step=MAX_STORED_PER_STEP,
+        max_per_recipe=MAX_STORED_PER_RECIPE,
     )
     return RedirectResponse(
-        url=f"/recipes/{recipe_key}/cook/{target}", status_code=303
+        url=f"/recipes/{recipe_key}/cook/{number}",
+        status_code=303,
     )

@@ -37,6 +37,15 @@ class Settings(BaseSettings):
     import_limit_window_seconds: int = Field(
         default=3600, validation_alias="IMPORT_LIMIT_WINDOW_SECONDS"
     )
+    guidance_limit_per_session: int = Field(
+        default=20, validation_alias="GUIDANCE_LIMIT_PER_SESSION"
+    )
+    guidance_limit_per_process: int = Field(
+        default=60, validation_alias="GUIDANCE_LIMIT_PER_PROCESS"
+    )
+    guidance_limit_window_seconds: int = Field(
+        default=3600, validation_alias="GUIDANCE_LIMIT_WINDOW_SECONDS"
+    )
 
     @property
     def upload_dir(self) -> Path:

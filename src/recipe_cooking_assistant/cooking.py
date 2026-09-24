@@ -6,12 +6,16 @@ extraction payloads.
 
 from __future__ import annotations
 
+import secrets
+import threading
 from dataclasses import dataclass
 from typing import Any, Mapping, MutableMapping
 
 from recipe_cooking_assistant.models import ExtractedIngredient, ExtractionResult
 
 COOK_SESSION_KEY = "cook_progress"
+GUIDE_TOKEN_KEY = "cook_guide_token"
+_TOKEN_LOCK = threading.Lock()
 
 
 class CookNavigationError(Exception):
@@ -98,3 +102,72 @@ def ingredients_for_step(
             groups.append((None, [item]))
             emitted.add(item.id)
     return groups
+
+
+def issue_guide_token(session: MutableMapping[str, Any], recipe_id: str) -> str:
+    """One short token for the recipe currently on screen. Not conversation history."""
+    token = secrets.token_urlsafe(16)
+    session[GUIDE_TOKEN_KEY] = {"recipe_id": recipe_id, "token": token}
+    return token
+
+
+def consume_guide_token(
+    session: MutableMapping[str, Any], recipe_id: str, submitted: str
+) -> bool:
+    """Accept a token once. A replay returns False and does not rotate again."""
+    with _TOKEN_LOCK:
+        current = session.get(GUIDE_TOKEN_KEY)
+        if not isinstance(current, dict):
+            return False
+        if current.get("recipe_id") != recipe_id or current.get("token") != submitted:
+            return False
+        if not submitted:
+            return False
+        session[GUIDE_TOKEN_KEY] = {
+            "recipe_id": recipe_id,
+            "token": secrets.token_urlsafe(16),
+        }
+        return True
+
+
+def apply_navigation(
+    session: MutableMapping[str, Any],
+    recipe_id: str,
+    number: int,
+    step_count: int,
+    command: str,
+) -> str:
+    """Move the existing cursor. Returns a path beginning with /cook.
+
+    Does not write the recipe. An invalid step raises before any cursor write.
+    """
+    if step_count <= 0 or number < 1 or number > step_count:
+        raise CookNavigationError("That step is not part of this recipe.")
+    if command == "repeat":
+        store_cursor(
+            session, recipe_id, CookCursor(index=number - 1, done=False)
+        )
+        return f"/cook/{number}"
+    if command == "start_over":
+        store_cursor(session, recipe_id, CookCursor(index=0, done=False))
+        if step_count <= 0:
+            return "/cook"
+        return "/cook/1"
+    if command == "back":
+        target = max(1, number - 1)
+        store_cursor(
+            session, recipe_id, CookCursor(index=target - 1, done=False)
+        )
+        return f"/cook/{target}"
+    if command == "finish" or (command == "next" and number == step_count):
+        store_cursor(
+            session, recipe_id, CookCursor(index=number - 1, done=True)
+        )
+        return "/cook"
+    if command == "next":
+        target = number + 1
+        store_cursor(
+            session, recipe_id, CookCursor(index=target - 1, done=False)
+        )
+        return f"/cook/{target}"
+    raise CookNavigationError("Choose Back, Next, or Finish.")

@@ -12,6 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from recipe_cooking_assistant.config import Settings, get_settings
 from recipe_cooking_assistant.db import Database
 from recipe_cooking_assistant.extraction import ExtractionClient
+from recipe_cooking_assistant.guidance import GuidanceClient
 from recipe_cooking_assistant.import_limit import ImportLimiter
 from recipe_cooking_assistant.routes.cook_routes import router as cook_router
 from recipe_cooking_assistant.routes.health import router as health_router
@@ -42,6 +43,7 @@ def create_app(
     settings: Settings | None = None,
     *,
     extraction_client: ExtractionClient | None = None,
+    guidance_client: GuidanceClient | None = None,
 ) -> FastAPI:
     assert_production_secrets()
     settings = settings or get_settings()
@@ -54,7 +56,9 @@ def create_app(
     app.state.settings = settings
     app.state.db = db
     app.state.extraction_client = extraction_client
+    app.state.guidance_client = guidance_client
     app.state.import_limiter = ImportLimiter()
+    app.state.guidance_limiter = ImportLimiter()
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(health_router)

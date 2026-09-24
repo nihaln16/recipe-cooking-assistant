@@ -101,6 +101,44 @@
   </ul>
 </section>
 {% endif %}
+
+<section class="cook-guide" aria-labelledby="cook-guide-heading">
+  <h2 id="cook-guide-heading">Ask about this step</h2>
+  {% if messages %}
+  <div class="cook-thread" role="log" aria-label="Conversation for this step">
+    {% for item in messages %}
+      {% if item.role == "assistant" %}
+      <article class="cook-msg cook-msg-ai">
+        <p class="cook-msg-label">AI guidance</p>
+        <p>{{ item.body }}</p>
+      </article>
+      {% else %}
+      <article class="cook-msg cook-msg-user">
+        <p class="cook-msg-label">You</p>
+        <p>{{ item.body }}</p>
+      </article>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if guide_error %}
+  <div class="alert alert-error" role="alert">{{ guide_error }}</div>
+  {% endif %}
+  <form id="cook-guide-form" method="post" action="/recipes/{{ recipe_id }}/cook/{{ step_number }}/guide">
+    <input type="hidden" name="form_token" value="{{ form_token }}">
+    <div class="cook-quick" role="group" aria-label="Suggested questions">
+      {% for key, label in quick_actions %}
+      <button class="btn btn-secondary" type="submit" name="quick_action" value="{{ key }}">{{ label }}</button>
+      {% endfor %}
+    </div>
+    <div class="cook-ask">
+      <label for="cook-question">Cooking question</label>
+      <textarea id="cook-question" name="message" maxlength="800" rows="3">{{ guide_draft }}</textarea>
+      <p id="cook-guide-status" class="cook-status" role="status"></p>
+      <button class="btn btn-primary" type="submit">Send</button>
+    </div>
+  </form>
+</section>
 </div>
 
 <nav class="cook-nav" aria-label="Step navigation">
@@ -115,5 +153,20 @@
     <button class="btn btn-primary" type="submit">{% if step_number == step_count %}Finish{% else %}Next{% endif %}</button>
   </form>
 </nav>
+<script>
+  const guideForm = document.getElementById("cook-guide-form");
+  if (guideForm) {
+    guideForm.addEventListener("submit", (event) => {
+      if (guideForm.dataset.submitting === "1") {
+        event.preventDefault();
+        return;
+      }
+      guideForm.dataset.submitting = "1";
+      guideForm.setAttribute("aria-busy", "true");
+      const status = document.getElementById("cook-guide-status");
+      if (status) status.textContent = "Sending…";
+    });
+  }
+</script>
 {% endif %}
 {% endblock %}
