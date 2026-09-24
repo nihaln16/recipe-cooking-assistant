@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import re
 from pathlib import Path
 
 import pytest
@@ -89,6 +90,16 @@ def test_import_page_renders(client: TestClient) -> None:
     assert response.status_code == 200
     assert "Recipe Cooking Assistant" in response.text
     assert "Extract recipe" in response.text
+    assert "Try the sample recipe" in response.text
+    assert 'name="use_sample" value="1"' in response.text
+    assert re.search(r'id="recipe_text"[^>]*>\s*</textarea>', response.text)
+
+
+def test_sample_button_submits_the_sample_recipe(client: TestClient) -> None:
+    response = client.post("/import", data={"use_sample": "1"}, follow_redirects=True)
+    assert response.status_code == 200
+    assert "Garlic butter pasta" in response.text
+    assert "Cook the garlic until fragrant" in response.text
 
 
 def test_import_requires_content(client: TestClient) -> None:

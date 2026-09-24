@@ -264,6 +264,8 @@ def test_navigation_edges_and_immutable_payload(tmp_path: Path) -> None:
         assert done.status_code == 200
         assert "Cooking complete" in done.text
         assert f'href="{location}"' in done.text
+        assert 'href="/"' in done.text
+        assert "Try another recipe" in done.text
         again_blocked = client.get(f"{location}/cook/99")
         assert again_blocked.status_code == 400
         still_done = client.get(f"{location}/cook")

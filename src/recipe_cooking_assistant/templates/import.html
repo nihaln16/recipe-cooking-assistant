@@ -53,4 +53,8 @@
     <button type="submit" class="btn btn-primary">Extract recipe</button>
   </div>
 </form>
+<form method="post" action="/import">
+  <input type="hidden" name="use_sample" value="1">
+  <button type="submit" class="btn btn-secondary">Try the sample recipe</button>
+</form>
 {% endblock %}

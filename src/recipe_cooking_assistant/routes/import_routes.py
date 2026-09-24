@@ -30,6 +30,26 @@ templates = create_templates()
 
 router = APIRouter(tags=["import"])
 
+# Shown on the empty homepage so a visitor can extract it and start cooking.
+SAMPLE_RECIPE = """Garlic butter pasta
+Servings: 2
+
+Ingredients
+- 8 ounces spaghetti
+- 3 cloves garlic, minced
+- 2 tablespoons butter
+- 1 tablespoon olive oil
+- Salt, to taste
+- 2 tablespoons chopped parsley
+
+Steps
+1. Boil the spaghetti in salted water until tender.
+2. Warm the butter and olive oil in a skillet over medium heat.
+3. Cook the garlic until fragrant, about 1 minute.
+4. Toss the drained pasta with the garlic butter.
+5. Finish with parsley and salt.
+"""
+
 
 def _format_limits(settings: Settings) -> dict[str, str | int | float]:
     return {
@@ -73,11 +93,14 @@ def import_page(
 async def import_submit(
     request: Request,
     recipe_text: str = Form(default=""),
+    use_sample: str = Form(default=""),
     images: list[UploadFile] | None = File(default=None),
     settings: Settings = Depends(get_settings),
     db: Database = Depends(get_db),
     session_id: str = Depends(get_session_id),
 ):
+    if (use_sample or "").strip() == "1" and not recipe_text.strip():
+        recipe_text = SAMPLE_RECIPE
     text = recipe_text.strip() or None
     files = images or []
 
