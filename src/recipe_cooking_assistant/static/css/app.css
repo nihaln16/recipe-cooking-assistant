@@ -1136,7 +1136,7 @@ html {
   margin-top: calc(var(--space) * 2);
 }
 
-.is-landing .dish-rail {
+.dish-rail {
   display: none;
 }
 
@@ -1288,7 +1288,7 @@ html {
   100% { transform: scaleX(0.2); opacity: 0.45; }
 }
 
-@media (min-width: 64rem) {
+@media (min-width: 80rem) {
   .is-landing .dish-rail {
     display: block;
     position: fixed;

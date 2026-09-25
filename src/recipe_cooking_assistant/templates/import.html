@@ -13,21 +13,6 @@
 {% block site_footer %}{% endblock %}
 
 {% block content %}
-<div class="dish-rail dish-rail-left" aria-hidden="true">
-  <div class="dish-rail-track">
-    {% for name in ["pasta", "salad", "soup", "cake", "roast", "fish", "pasta", "salad", "soup", "cake", "roast", "fish"] %}
-    <img src="/static/img/dish-{{ name }}.png" alt="">
-    {% endfor %}
-  </div>
-</div>
-<div class="dish-rail dish-rail-right" aria-hidden="true">
-  <div class="dish-rail-track">
-    {% for name in ["roast", "fish", "cake", "soup", "salad", "pasta", "roast", "fish", "cake", "soup", "salad", "pasta"] %}
-    <img src="/static/img/dish-{{ name }}.png" alt="">
-    {% endfor %}
-  </div>
-</div>
-
 <section class="hero-block">
   <p class="eyebrow">From source to stovetop</p>
   <h1>Turn any recipe into a cooking guide you can trust.</h1>
@@ -140,6 +125,21 @@
     <li><span class="badge badge-ai">AI guidance</span></li>
   </ul>
 </section>
+
+<div class="dish-rail dish-rail-left" aria-hidden="true">
+  <div class="dish-rail-track">
+    {% for name in ["pasta", "salad", "soup", "cake", "roast", "fish", "pasta", "salad", "soup", "cake", "roast", "fish"] %}
+    <img src="/static/img/dish-{{ name }}.png" alt="" width="152" height="192">
+    {% endfor %}
+  </div>
+</div>
+<div class="dish-rail dish-rail-right" aria-hidden="true">
+  <div class="dish-rail-track">
+    {% for name in ["roast", "fish", "cake", "soup", "salad", "pasta", "roast", "fish", "cake", "soup", "salad", "pasta"] %}
+    <img src="/static/img/dish-{{ name }}.png" alt="" width="152" height="192">
+    {% endfor %}
+  </div>
+</div>
 
 <div class="import-loading" id="import-loading" hidden>
   <div class="import-loading-panel">
