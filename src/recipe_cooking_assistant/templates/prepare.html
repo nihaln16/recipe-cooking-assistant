@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_provenance.html" import provenance_badge %}
+
+{% block title %}Prepare ingredients · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-block">
+  <p class="eyebrow">Prepare</p>
+  <h1>{{ recipe.title or "Untitled recipe" }}</h1>
+  {% if recipe.servings %}
+  <p class="lede">Servings: {{ recipe.servings }}</p>
+  {% endif %}
+  <p class="hint">Check off what you have. Unchecked ingredients do not block cooking. Checking does not change the recipe.</p>
+  {% if guidance_note %}
+  <p class="hint">AI guidance</p>
+  <p>{{ guidance_note }}</p>
+  <span class="badge">{% if guidance_provenance == "user_edit" %}User edit{% else %}AI guidance{% endif %}</span>
+  {% endif %}
+</section>
+
+{% if prep_error %}
+<div class="alert alert-error" role="alert">{{ prep_error }}</div>
+<p><a class="btn btn-primary" href="/recipes/{{ stored.id }}">Back to recipe</a></p>
+{% else %}
+
+<ul class="recipe-list prep-list">
+  {% for group_id, members in ingredient_groups %}
+  <li class="recipe-item {% if group_id and members|length > 1 %}alt-group{% endif %} {% if members|length == 1 and members[0].optional %}is-optional{% endif %}">
+    {% if group_id and members|length > 1 %}
+    <p class="alt-label">Choose one</p>
+    {% endif %}
+    {% for item in members %}
+    <div class="prep-row">
+      <form method="post" action="/recipes/{{ stored.id }}/prepare">
+        <input type="hidden" name="ingredient_id" value="{{ item.id }}">
+        <input type="hidden" name="checked" value="{{ '0' if item.id in checked_ids else '1' }}">
+        <button class="check-toggle" type="submit" aria-pressed="{{ 'true' if item.id in checked_ids else 'false' }}" aria-label="{% if item.id in checked_ids %}Mark not ready{% else %}Mark ready{% endif %}: {{ item | ingredient_line }}">
+          <span class="check-box" aria-hidden="true">{% if item.id in checked_ids %}✓{% endif %}</span>
+        </button>
+      </form>
+      <div class="prep-copy">
+        <div class="recipe-item-main">{{ item | ingredient_line }}</div>
+        <div class="meta-row">
+          {% if item.optional %}<span class="badge">Optional</span>{% endif %}
+          {{ provenance_badge(item) }}
+          <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/substitute/{{ item.id }}">I don’t have this</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </li>
+  {% else %}
+  <li class="empty-inline">No listed ingredients.</li>
+  {% endfor %}
+</ul>
+
+<script src="/static/js/prepare.js"></script>
+<nav class="actions" aria-label="After preparation">
+  <a class="btn btn-primary" href="/recipes/{{ stored.id }}/cook">Start cooking</a>
+  <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/edit">Edit recipe</a>
+  <a class="btn btn-secondary" href="/recipes/{{ stored.id }}">Back to recipe</a>
+</nav>
+{% endif %}
+{% endblock %}

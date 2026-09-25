@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from recipe_cooking_assistant.config import Settings
 from recipe_cooking_assistant.cooking import (
@@ -11,7 +11,7 @@ from recipe_cooking_assistant.cooking import (
     consume_guide_token,
     cursor_for,
     ingredients_for_step,
-    issue_guide_token,
+    ensure_guide_token,
     parse_step_number,
     resume_index,
     store_cursor,
@@ -40,6 +40,8 @@ from recipe_cooking_assistant.guidance import (
 )
 from recipe_cooking_assistant.import_limit import ImportLimiter
 from recipe_cooking_assistant.routes.recipe_routes import not_found_response, prepare_recipe
+from recipe_cooking_assistant.scaling import display_recipe, working_fingerprint
+from recipe_cooking_assistant.timer import AmbiguousDurations, format_clock, parse_step_timer
 from recipe_cooking_assistant.templating import create_templates
 
 templates = create_templates()
@@ -63,7 +65,11 @@ def _page(
 ) -> HTMLResponse:
     payload = {"app_name": settings.app_name, **context}
     return templates.TemplateResponse(
-        request, "cook.html", payload, status_code=status_code
+        request,
+        "cook.html",
+        payload,
+        status_code=status_code,
+        headers={"Cache-Control": "no-store"},
     )
 
 
@@ -96,6 +102,15 @@ def _invalid(
     )
 
 
+def _apply_scaled_display(db: Database, prepared) -> None:
+    if prepared is None:
+        return
+    view = db.get_scaled_view(prepared.stored.id, prepared.stored.session_id)
+    if view and view.get("fingerprint") != working_fingerprint(prepared.working):
+        return
+    prepared.working = display_recipe(prepared.working, view)
+
+
 @router.get("/recipes/{recipe_id}/cook", response_class=HTMLResponse)
 def cook_resume(
     request: Request,
@@ -105,6 +120,7 @@ def cook_resume(
     session_id: str = Depends(get_session_id),
 ):
     prepared = prepare_recipe(db, recipe_id, session_id)
+    _apply_scaled_display(db, prepared)
     if prepared is None:
         return not_found_response(request, settings)
     if prepared.pending:
@@ -152,6 +168,7 @@ def cook_step(
     session_id: str = Depends(get_session_id),
 ):
     prepared = prepare_recipe(db, recipe_id, session_id)
+    _apply_scaled_display(db, prepared)
     if prepared is None:
         return not_found_response(request, settings)
     if prepared.pending:
@@ -195,6 +212,7 @@ def cook_action(
     session_id: str = Depends(get_session_id),
 ):
     prepared = prepare_recipe(db, recipe_id, session_id)
+    _apply_scaled_display(db, prepared)
     if prepared is None:
         return not_found_response(request, settings)
     if prepared.pending:
@@ -255,6 +273,7 @@ def _render_step(
     guide_draft: str = "",
 ):
     step = prepared.working.steps[number - 1]
+    parsed = parse_step_timer(step.text)
     messages = db.list_cook_messages(prepared.stored.id, prepared.stored.session_id, number)
     return _page(
         request,
@@ -271,9 +290,12 @@ def _render_step(
         ),
         messages=messages,
         quick_actions=QUICK_ACTIONS,
-        form_token=issue_guide_token(request.session, prepared.stored.id),
+        form_token=ensure_guide_token(request.session, prepared.stored.id),
         guide_error=guide_error,
         guide_draft=guide_draft,
+        timer_offer=parsed if not isinstance(parsed, AmbiguousDurations) else None,
+        timer_clock=format_clock(parsed.seconds) if parsed and not isinstance(parsed, AmbiguousDurations) else "",
+        timer_ambiguous=parsed if isinstance(parsed, AmbiguousDurations) else None,
     )
 
 
@@ -284,6 +306,53 @@ def _guidance_client(request: Request, settings: Settings):
     if not settings.openai_api_key:
         return None
     return OpenAIGuidanceClient(settings.openai_api_key)
+
+
+def _accepts_json(request: Request) -> bool:
+    return "application/json" in request.headers.get("accept", "")
+
+
+def _guide_client_response(
+    request: Request,
+    settings: Settings,
+    db: Database,
+    prepared,
+    number: int,
+    *,
+    status_code: int = 200,
+    guide_error: str | None = None,
+    guide_draft: str = "",
+    redirect: str | None = None,
+    user_text: str | None = None,
+    guidance: str | None = None,
+):
+    if not _accepts_json(request):
+        if redirect:
+            return RedirectResponse(url=redirect, status_code=303)
+        return _render_step(
+            request,
+            settings,
+            db,
+            prepared,
+            number,
+            status_code=status_code,
+            guide_error=guide_error,
+            guide_draft=guide_draft,
+        )
+    token = ensure_guide_token(request.session, prepared.stored.id)
+    stay = bool(user_text and guidance)
+    return JSONResponse(
+        {
+            "ok": guide_error is None,
+            "error": guide_error,
+            "draft": guide_draft,
+            "redirect": None if stay else redirect,
+            "user": user_text,
+            "guidance": guidance,
+            "form_token": token,
+        },
+        status_code=200 if redirect or stay else status_code,
+    )
 
 
 def _recent_duplicate(db: Database, extraction_id: str, session_id: str, number: int, text: str) -> bool:
@@ -307,6 +376,7 @@ def cook_guide(
     session_id: str = Depends(get_session_id),
 ):
     prepared = prepare_recipe(db, recipe_id, session_id)
+    _apply_scaled_display(db, prepared)
     if prepared is None:
         return not_found_response(request, settings)
     if prepared.pending:
@@ -335,7 +405,7 @@ def cook_guide(
     if action_key:
         question = quick_action_text(action_key)
         if question is None:
-            return _render_step(
+            return _guide_client_response(
                 request,
                 settings,
                 db,
@@ -356,13 +426,18 @@ def cook_guide(
             )
         except CookNavigationError:
             return _invalid(request, settings, recipe_key, prepared.working.title)
-        return RedirectResponse(
-            url=f"/recipes/{recipe_key}{target}", status_code=303
+        return _guide_client_response(
+            request,
+            settings,
+            db,
+            prepared,
+            number,
+            redirect=f"/recipes/{recipe_key}{target}",
         )
 
     stripped = " ".join(question.split()).strip()
     if not stripped:
-        return _render_step(
+        return _guide_client_response(
             request,
             settings,
             db,
@@ -372,7 +447,7 @@ def cook_guide(
             guide_error=EMPTY_MESSAGE,
         )
     if len(stripped) > MAX_USER_CHARS:
-        return _render_step(
+        return _guide_client_response(
             request,
             settings,
             db,
@@ -384,14 +459,18 @@ def cook_guide(
         )
 
     if _recent_duplicate(db, recipe_key, session_id, number, stripped):
-        return RedirectResponse(
-            url=f"/recipes/{recipe_key}/cook/{number}",
-            status_code=303,
+        return _guide_client_response(
+            request,
+            settings,
+            db,
+            prepared,
+            number,
+            redirect=None if _accepts_json(request) else f"/recipes/{recipe_key}/cook/{number}",
         )
 
     client = _guidance_client(request, settings)
     if client is None:
-        return _render_step(
+        return _guide_client_response(
             request,
             settings,
             db,
@@ -410,7 +489,7 @@ def cook_guide(
         window_seconds=settings.guidance_limit_window_seconds,
     )
     if not allowed:
-        return _render_step(
+        return _guide_client_response(
             request,
             settings,
             db,
@@ -451,7 +530,7 @@ def cook_guide(
     try:
         guidance = client.advise(context=context, settings=settings)
     except GuidanceError:
-        return _render_step(
+        return _guide_client_response(
             request,
             settings,
             db,
@@ -462,7 +541,7 @@ def cook_guide(
             guide_draft=stripped,
         )
     except Exception:
-        return _render_step(
+        return _guide_client_response(
             request,
             settings,
             db,
@@ -475,7 +554,7 @@ def cook_guide(
 
     cleaned = " ".join(guidance.split()).strip()
     if not cleaned or len(cleaned) > MAX_GUIDANCE_CHARS:
-        return _render_step(
+        return _guide_client_response(
             request,
             settings,
             db,
@@ -495,7 +574,13 @@ def cook_guide(
         max_per_step=MAX_STORED_PER_STEP,
         max_per_recipe=MAX_STORED_PER_RECIPE,
     )
-    return RedirectResponse(
-        url=f"/recipes/{recipe_key}/cook/{number}",
-        status_code=303,
+    return _guide_client_response(
+        request,
+        settings,
+        db,
+        prepared,
+        number,
+        user_text=stripped,
+        guidance=cleaned,
+        redirect=f"/recipes/{recipe_key}/cook/{number}",
     )

@@ -18,6 +18,11 @@
 </div>
 {% endif %}
 
+<form class="sample-row" method="post" action="/import">
+  <input type="hidden" name="use_sample" value="1">
+  <button type="submit" class="btn btn-secondary">Try the sample recipe</button>
+  <p class="sample-dish">Garlic butter pasta</p>
+</form>
 <form class="import-form" action="/import" method="post" enctype="multipart/form-data">
   <div class="field">
     <label for="recipe_text">Recipe text or caption</label>
@@ -52,9 +57,5 @@
   <div class="actions">
     <button type="submit" class="btn btn-primary">Extract recipe</button>
   </div>
-</form>
-<form method="post" action="/import">
-  <input type="hidden" name="use_sample" value="1">
-  <button type="submit" class="btn btn-secondary">Try the sample recipe</button>
 </form>
 {% endblock %}

@@ -91,7 +91,9 @@ def test_import_page_renders(client: TestClient) -> None:
     assert "Recipe Cooking Assistant" in response.text
     assert "Extract recipe" in response.text
     assert "Try the sample recipe" in response.text
+    assert "Garlic butter pasta" in response.text
     assert 'name="use_sample" value="1"' in response.text
+    assert response.text.index("Try the sample recipe") < response.text.index('id="recipe_text"')
     assert re.search(r'id="recipe_text"[^>]*>\s*</textarea>', response.text)
 
 

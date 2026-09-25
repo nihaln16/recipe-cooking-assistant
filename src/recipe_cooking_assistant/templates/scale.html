@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Scale recipe · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-block">
+  <p class="eyebrow">Scale recipe</p>
+  <h1>{{ recipe.title or "Untitled recipe" }}</h1>
+  <p class="lede">Current servings: {{ recipe.servings or "not a single count" }}</p>
+  <p class="hint">This builds a separate cooking view. It does not change the saved recipe or ingredient quantities.</p>
+</section>
+
+{% if scale_error %}
+<div class="alert alert-error" role="alert">{{ scale_error }}</div>
+{% endif %}
+
+{% if not can_scale %}
+<p><a class="btn btn-primary" href="/recipes/{{ stored.id }}">Back to review</a></p>
+{% else %}
+<form method="post" action="/recipes/{{ stored.id }}/scale">
+  <div class="field">
+    <label for="scale-target">Target servings</label>
+    <input id="scale-target" name="target" type="text" inputmode="decimal" value="{{ view.target if view else '' }}">
+  </div>
+  <div class="actions">
+    <button class="btn btn-primary" type="submit" name="action" value="set">Scale recipe</button>
+    <button class="btn btn-secondary" type="submit" name="action" value="double">Twice the servings</button>
+    <button class="btn btn-secondary" type="submit" formaction="/recipes/{{ stored.id }}/scale/guide" formnovalidate>Get scaling guidance</button>
+    <a class="btn btn-secondary" href="/recipes/{{ stored.id }}">Cancel</a>
+  </div>
+</form>
+
+{% if view %}
+<form method="post" action="/recipes/{{ stored.id }}/scale/confirm">
+  <section class="recipe-section">
+    <h2>For {{ view.target }} servings</h2>
+    <p class="hint">Calculated from {{ view.current }} servings. Confirm these amounts to prepare and cook. The saved recipe stays unchanged.</p>
+    {% if guidance_note %}
+    <p class="hint">AI guidance</p>
+    <p id="scale-guidance">{{ guidance_note }}</p>
+    <input type="hidden" name="suggestion" value="{{ guidance_note }}">
+    {% else %}
+    <input type="hidden" name="suggestion" value="">
+    {% endif %}
+    <ul class="recipe-list">
+      {% for row in view.ingredients %}
+      <li class="recipe-item {% if row.optional %}is-optional{% endif %}">
+        {% if row.alternative_group_id %}<p class="alt-label">Choose one</p>{% endif %}
+        <div class="recipe-item-main">{% if row.package_count %}{{ row.package_count }} {{ row.package_type or "" }} {% endif %}{% if row.package_size %}({{ row.package_size }}) {% endif %}{% if row.quantity %}{{ row.quantity }} {% endif %}{% if row.unit %}{{ row.unit }} {% endif %}{{ row.name }}{% if row.notes %} — {{ row.notes }}{% endif %}{% if row.optional %} (optional){% endif %}{% if row.unrounded %} <span class="evidence">calculated {{ row.unrounded }}</span>{% endif %}</div>
+        <div class="meta-row">
+          {% if row.provenance == "calculated" %}
+          <span class="badge badge-edit">Calculated</span>
+          {% else %}
+          <span class="badge badge-source">Source</span>
+          {% endif %}
+          {% if row.skipped_reason == "missing" %}<span class="evidence">Quantity left blank</span>{% endif %}
+          {% if row.skipped_reason == "qualifier" %}<span class="evidence">Not scaled</span>{% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  <div class="actions">
+    <button class="btn btn-primary" type="submit">Confirm quantities</button>
+  </div>
+</form>
+<div class="actions">
+  <form method="post" action="/recipes/{{ stored.id }}/scale/rollback">
+    <button class="btn btn-tertiary" type="submit">Discard scaled view</button>
+  </form>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

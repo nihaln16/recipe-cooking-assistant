@@ -8,7 +8,12 @@
   <p class="eyebrow">{% if pending_review %}Review before cooking{% else %}Extracted recipe{% endif %}</p>
   <h1>{{ recipe.title or "Untitled recipe" }}</h1>
   {% if recipe.servings %}
-    <p class="lede">Servings: {{ recipe.servings }}</p>
+    <div class="servings-row">
+      <p class="lede">Servings: {{ recipe.servings }}</p>
+      {% if not pending_review %}
+      <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/scale">Scale recipe</a>
+      {% endif %}
+    </div>
   {% else %}
   <p class="lede">Structured from your pasted text and screenshots. Original source is kept below.</p>
   {% endif %}
@@ -178,6 +183,9 @@
         {% for item in members %}
         <div class="alt-option">
           <div class="recipe-item-main">{{ item | ingredient_line }}</div>
+          {% if not pending_review %}
+          <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/substitute/{{ item.id }}">I don’t have this</a>
+          {% endif %}
           {% if not loop.last %}<p class="alt-or">or</p>{% endif %}
         </div>
         {% endfor %}
@@ -194,6 +202,9 @@
             <span class="badge">Optional</span>
             {% endif %}
             {{ provenance_badge(item) }}
+            {% if not pending_review %}
+            <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/substitute/{{ item.id }}">I don’t have this</a>
+            {% endif %}
             {% if item.evidence and (item.evidence.quote or item.evidence.image_index is not none) %}
             <span class="evidence">
               {% if item.evidence.quote %}“{{ item.evidence.quote }}”{% endif %}
@@ -331,7 +342,11 @@
 
 <div class="actions">
   {% if not pending_review %}
-  <a class="btn btn-primary" href="/recipes/{{ stored.id }}/cook">Start cooking</a>
+  <a class="btn btn-primary" href="/recipes/{{ stored.id }}/prepare">Prepare ingredients</a>
+  <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/cook">Start cooking</a>
+  <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/edit">Edit recipe</a>
+  {% else %}
+  <p class="hint">Finish review before editing or preparing this recipe.</p>
   {% endif %}
   <a class="btn btn-secondary" href="/">Import another</a>
 </div>

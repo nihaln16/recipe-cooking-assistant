@@ -4,7 +4,7 @@ Turn recipe text or screenshots into a structured recipe and an interactive, ste
 
 ## Status
 
-**Cooking Mode** includes step navigation and a grounded cooking conversation. A visual design review has not started.
+After review, the working recipe can be edited, ingredients can be checked off, and substitution questions use the same grounded assistant. Cooking Mode includes step navigation, a grounded conversation, and a source-duration timer. Scale recipe builds a separate doubled or target-count view and does not change saved quantities. A visual design review has not started.
 
 See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for the full handoff.
 

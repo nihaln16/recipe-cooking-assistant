@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "_provenance.html" import provenance_badge %}
+
+{% block title %}Substitution · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-block">
+  <p class="eyebrow">Substitution</p>
+  <h1>{% if target %}I don’t have {{ target.name }}{% else %}Substitution unavailable{% endif %}</h1>
+  {% if recipe and recipe.servings %}
+  <p class="lede">Servings: {{ recipe.servings }}</p>
+  {% endif %}
+</section>
+
+{% if blocked %}
+<div class="alert alert-error" role="alert">{{ blocked }}</div>
+<p><a class="btn btn-primary" href="/recipes/{{ stored.id }}">Back to recipe</a></p>
+{% else %}
+<p class="recipe-item-main">{{ target | ingredient_line }}</p>
+<div class="meta-row">{{ provenance_badge(target) }}</div>
+
+{% if alternatives %}
+<section class="recipe-section" aria-label="Source alternatives">
+  <h2>Source alternatives</h2>
+  <p class="alt-label">Choose one. These come from the recipe, not from AI.</p>
+  <ul class="recipe-list">
+    {% for item in alternatives %}
+    <li class="recipe-item">
+      <div class="recipe-item-main">{{ item | ingredient_line }}</div>
+      <div class="meta-row"><span class="badge badge-source">Source</span></div>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="cook-guide" aria-labelledby="sub-heading">
+  <h2 id="sub-heading">Ask for substitution ideas</h2>
+  <p class="hint">Replies are AI guidance. They do not change the recipe. Edit the ingredient yourself if you want to use one.</p>
+  {% if messages %}
+  <div class="cook-thread" role="log" aria-label="Substitution conversation">
+    {% for item in messages %}
+      {% if item.role == "assistant" %}
+      <article class="cook-msg cook-msg-ai">
+        <p class="cook-msg-label">AI guidance</p>
+        <p>{{ item.body }}</p>
+      </article>
+      {% else %}
+      <article class="cook-msg cook-msg-user">
+        <p class="cook-msg-label">You</p>
+        <p>{{ item.body }}</p>
+      </article>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if guide_error %}
+  <div class="alert alert-error" role="alert">{{ guide_error }}</div>
+  {% endif %}
+  <form method="post" action="/recipes/{{ stored.id }}/substitute/{{ target.id }}">
+    <input type="hidden" name="form_token" value="{{ form_token }}">
+    <div class="actions">
+      <button class="btn btn-secondary" type="submit" name="quick_action" value="suggest">Suggest a substitution</button>
+    </div>
+    <div class="cook-ask">
+      <label for="sub-question">Follow-up</label>
+      <textarea id="sub-question" name="message" maxlength="800" rows="3">{{ guide_draft }}</textarea>
+      <button class="btn btn-primary" type="submit">Send</button>
+    </div>
+  </form>
+</section>
+
+<nav class="actions">
+  <a class="btn btn-primary" href="/recipes/{{ stored.id }}/edit#ingredient-{{ target.id }}">Edit ingredient</a>
+  <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/prepare">Back to preparation</a>
+  <a class="btn btn-secondary" href="/recipes/{{ stored.id }}">Back to recipe</a>
+</nav>
+{% endif %}
+{% endblock %}

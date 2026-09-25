@@ -153,6 +153,27 @@ def test_quick_actions_submit_predefined_questions(tmp_path: Path) -> None:
             assert quick_action_text(key) == label
 
 
+def test_guide_json_stays_on_the_step(tmp_path: Path) -> None:
+    guide = RecordingGuidance(replies=["Use medium heat. That is a suggestion."])
+    client, guide = _client(tmp_path, _recipe(), guide)
+    with client:
+        location = _import(client)
+        page = client.get(f"{location}/cook/1")
+        response = client.post(
+            f"{location}/cook/1/guide",
+            data={"form_token": _token(page.text), "message": "What heat?"},
+            headers={"Accept": "application/json"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["ok"] is True
+        assert body["user"] == "What heat?"
+        assert body["guidance"]
+        assert body["redirect"] is None
+        assert body["form_token"]
+        assert len(guide.calls) == 1
+
+
 def test_typed_followups_send_current_step_and_bounded_history(tmp_path: Path) -> None:
     guide = RecordingGuidance(
         replies=[

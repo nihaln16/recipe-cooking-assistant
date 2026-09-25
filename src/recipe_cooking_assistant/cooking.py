@@ -15,6 +15,7 @@ from recipe_cooking_assistant.models import ExtractedIngredient, ExtractionResul
 
 COOK_SESSION_KEY = "cook_progress"
 GUIDE_TOKEN_KEY = "cook_guide_token"
+SUBSTITUTION_TOKEN_KEY = "substitution_guide_token"
 _TOKEN_LOCK = threading.Lock()
 
 
@@ -104,26 +105,47 @@ def ingredients_for_step(
     return groups
 
 
+def ensure_guide_token(
+    session: MutableMapping[str, Any],
+    recipe_id: str,
+    key: str = GUIDE_TOKEN_KEY,
+) -> str:
+    """Return the current form token. Opening another page does not replace it."""
+    current = session.get(key)
+    if (
+        isinstance(current, dict)
+        and current.get("recipe_id") == recipe_id
+        and current.get("token")
+    ):
+        return str(current["token"])
+    token = secrets.token_urlsafe(16)
+    session[key] = {"recipe_id": recipe_id, "token": token}
+    return token
+
+
 def issue_guide_token(session: MutableMapping[str, Any], recipe_id: str) -> str:
-    """One short token for the recipe currently on screen. Not conversation history."""
+    """Force a new cooking-guide token. Prefer ensure_guide_token for page renders."""
     token = secrets.token_urlsafe(16)
     session[GUIDE_TOKEN_KEY] = {"recipe_id": recipe_id, "token": token}
     return token
 
 
 def consume_guide_token(
-    session: MutableMapping[str, Any], recipe_id: str, submitted: str
+    session: MutableMapping[str, Any],
+    recipe_id: str,
+    submitted: str,
+    key: str = GUIDE_TOKEN_KEY,
 ) -> bool:
     """Accept a token once. A replay returns False and does not rotate again."""
     with _TOKEN_LOCK:
-        current = session.get(GUIDE_TOKEN_KEY)
+        current = session.get(key)
         if not isinstance(current, dict):
             return False
         if current.get("recipe_id") != recipe_id or current.get("token") != submitted:
             return False
         if not submitted:
             return False
-        session[GUIDE_TOKEN_KEY] = {
+        session[key] = {
             "recipe_id": recipe_id,
             "token": secrets.token_urlsafe(16),
         }

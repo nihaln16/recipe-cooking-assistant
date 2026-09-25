@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% from "_provenance.html" import provenance_badge %}
+
+{% block title %}Edit recipe · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-block">
+  <p class="eyebrow">Customize</p>
+  <h1>Edit recipe</h1>
+  <p class="lede">Changes here are your edits. The original extraction stays unchanged.</p>
+</section>
+
+{% if edit_error %}
+<div class="alert alert-error" role="alert">{{ edit_error }}</div>
+{% endif %}
+
+{% if not can_edit %}
+<nav class="actions" aria-label="Leave editing">
+  <a class="btn btn-primary" href="/recipes/{{ stored.id }}">Back to review</a>
+</nav>
+{% else %}
+
+<form class="edit-block" method="post" action="/recipes/{{ stored.id }}/edit">
+  <input type="hidden" name="action" value="save_overview">
+  <h2>Title and servings</h2>
+  <p class="hint">Changing the serving count corrects the label only. It does not scale ingredient quantities.</p>
+  <div class="field">
+    <label for="recipe-title">Title</label>
+    <input id="recipe-title" name="title" type="text" required value="{{ recipe.title or '' }}">
+  </div>
+  <div class="field">
+    <label for="recipe-servings">Serving count</label>
+    <input id="recipe-servings" name="servings" type="text" value="{{ recipe.servings or '' }}" placeholder="Unspecified">
+  </div>
+  <div class="meta-row">
+    {% if recipe.title_provenance == "user_edit" %}<span class="badge badge-edit">Title · user edit</span>{% else %}<span class="badge badge-source">Title · source</span>{% endif %}
+    {% if recipe.servings_provenance == "user_edit" %}<span class="badge badge-edit">Servings · user edit</span>{% else %}<span class="badge badge-source">Servings · source</span>{% endif %}
+  </div>
+  <div class="actions">
+    <button class="btn btn-primary" type="submit">Save title and servings</button>
+    {% if edits.title is not none or edits.servings_edited %}
+    <button class="btn btn-tertiary" type="submit" name="action" value="revert_overview">Revert title and servings</button>
+    {% endif %}
+    <a class="btn btn-secondary" href="/recipes/{{ stored.id }}">Cancel</a>
+  </div>
+</form>
+
+<section class="recipe-section">
+  <h2>Ingredients</h2>
+  {% for group_id, members in ingredient_groups %}
+    {% if group_id and members|length > 1 %}
+    <p class="alt-label">Choose one</p>
+    {% endif %}
+    {% for item in members %}
+    <form class="edit-block" method="post" action="/recipes/{{ stored.id }}/edit" id="ingredient-{{ item.id }}">
+      <input type="hidden" name="ingredient_id" value="{{ item.id }}">
+      <h3>{{ item | ingredient_line }}</h3>
+      <div class="meta-row">
+        {{ provenance_badge(item) }}
+        {% if item.optional %}<span class="badge">Optional</span>{% endif %}
+        {% if item.evidence and item.evidence.quote %}
+        <span class="evidence">“{{ item.evidence.quote }}”</span>
+        {% endif %}
+      </div>
+      <div class="field">
+        <label for="name-{{ item.id }}">Name</label>
+        <input id="name-{{ item.id }}" name="name" type="text" required value="{{ item.name }}">
+      </div>
+      <div class="field">
+        <label for="qty-{{ item.id }}">Quantity</label>
+        <input id="qty-{{ item.id }}" name="quantity" type="text" value="{{ item.quantity or '' }}">
+      </div>
+      <div class="field">
+        <label for="unit-{{ item.id }}">Unit</label>
+        <input id="unit-{{ item.id }}" name="unit" type="text" value="{{ item.unit or '' }}">
+      </div>
+      <div class="field">
+        <label for="notes-{{ item.id }}">Preparation or qualifier</label>
+        <input id="notes-{{ item.id }}" name="notes" type="text" value="{{ item.notes or '' }}">
+      </div>
+      {% if item.id.startswith('user_ing_') %}
+      <label class="choice-row">
+        <input type="checkbox" name="optional" value="1" {% if item.optional %}checked{% endif %}>
+        Optional
+      </label>
+      {% endif %}
+      <div class="actions">
+        <button class="btn btn-primary" type="submit" name="action" value="save_ingredient">Save ingredient</button>
+        <button class="btn btn-tertiary" type="submit" name="action" value="remove_ingredient">Remove ingredient</button>
+        {% if item.id in edits.ingredient_fields or item.id.startswith('user_ing_') %}
+        <button class="btn btn-secondary" type="submit" name="action" value="revert_ingredient">Revert ingredient</button>
+        {% endif %}
+        <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/substitute/{{ item.id }}">I don’t have this</a>
+      </div>
+    </form>
+    {% endfor %}
+  {% endfor %}
+
+  <form class="edit-block" method="post" action="/recipes/{{ stored.id }}/edit">
+    <input type="hidden" name="action" value="add_ingredient">
+    <h3>Add an ingredient</h3>
+    <div class="field">
+      <label for="add-name">Name</label>
+      <input id="add-name" name="name" type="text" required value="{{ draft.get('name', '') if draft.get('ingredient_id') in (none, '') else '' }}">
+    </div>
+    <div class="field">
+      <label for="add-qty">Quantity</label>
+      <input id="add-qty" name="quantity" type="text">
+    </div>
+    <div class="field">
+      <label for="add-unit">Unit</label>
+      <input id="add-unit" name="unit" type="text">
+    </div>
+    <div class="field">
+      <label for="add-notes">Preparation or qualifier</label>
+      <input id="add-notes" name="notes" type="text">
+    </div>
+    <label class="choice-row">
+      <input type="checkbox" name="optional" value="1">
+      Optional
+    </label>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Add ingredient</button>
+      <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/edit">Cancel</a>
+    </div>
+  </form>
+
+  {% if removed_ingredients %}
+  <h3>Removed from the working recipe</h3>
+  <ul class="recipe-list">
+    {% for item in removed_ingredients %}
+    <li class="recipe-item">
+      <div class="recipe-item-main">{{ item | ingredient_line }}</div>
+      <form method="post" action="/recipes/{{ stored.id }}/edit">
+        <input type="hidden" name="action" value="restore_ingredient">
+        <input type="hidden" name="ingredient_id" value="{{ item.id }}">
+        <button class="btn btn-secondary" type="submit">Restore ingredient</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+
+<section class="recipe-section">
+  <h2>Steps</h2>
+  {% for step in recipe.steps %}
+  <form class="edit-block" method="post" action="/recipes/{{ stored.id }}/edit">
+    <input type="hidden" name="step_id" value="{{ step.id }}">
+    <div class="field">
+      <label for="step-{{ step.id }}">Step {{ loop.index }}</label>
+      <textarea id="step-{{ step.id }}" name="text" rows="3" required>{{ step.text }}</textarea>
+    </div>
+    <div class="meta-row">{{ provenance_badge(step) }}</div>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit" name="action" value="save_step">Save step</button>
+      <button class="btn btn-secondary" type="submit" formaction="/recipes/{{ stored.id }}/edit" name="action" value="move_step" {% if loop.first %}disabled{% endif %}>Move up</button>
+      <input type="hidden" name="direction" value="up">
+    </div>
+  </form>
+  <form class="edit-inline" method="post" action="/recipes/{{ stored.id }}/edit">
+    <input type="hidden" name="step_id" value="{{ step.id }}">
+    <input type="hidden" name="direction" value="down">
+    <div class="actions">
+      <button class="btn btn-secondary" type="submit" name="action" value="move_step" {% if loop.last %}disabled{% endif %}>Move down</button>
+      <button class="btn btn-tertiary" type="submit" name="action" value="remove_step">Remove step</button>
+      {% if step.id in edits.step_fields or step.id.startswith('user_step_') %}
+      <button class="btn btn-secondary" type="submit" name="action" value="revert_step">Revert step</button>
+      {% endif %}
+    </div>
+  </form>
+  {% endfor %}
+
+  {% if edits.step_order %}
+  <form method="post" action="/recipes/{{ stored.id }}/edit">
+    <input type="hidden" name="action" value="revert_order">
+    <button class="btn btn-secondary" type="submit">Restore step order</button>
+  </form>
+  {% endif %}
+
+  <form class="edit-block" method="post" action="/recipes/{{ stored.id }}/edit">
+    <input type="hidden" name="action" value="add_step">
+    <h3>Add a step</h3>
+    <div class="field">
+      <label for="add-step">Step text</label>
+      <textarea id="add-step" name="text" rows="3" required></textarea>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Add step</button>
+      <a class="btn btn-secondary" href="/recipes/{{ stored.id }}">Cancel</a>
+    </div>
+  </form>
+
+  {% if removed_steps %}
+  <h3>Removed steps</h3>
+  <ul class="recipe-list">
+    {% for step in removed_steps %}
+    <li class="recipe-item">
+      <div class="recipe-item-main">{{ step.text }}</div>
+      <form method="post" action="/recipes/{{ stored.id }}/edit">
+        <input type="hidden" name="action" value="restore_step">
+        <input type="hidden" name="step_id" value="{{ step.id }}">
+        <button class="btn btn-secondary" type="submit">Restore step</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

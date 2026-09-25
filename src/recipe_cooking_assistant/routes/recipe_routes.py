@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from recipe_cooking_assistant.config import Settings
 from recipe_cooking_assistant.db import Database, SourceBundle
 from recipe_cooking_assistant.deps import get_db, get_session_id, get_settings
+from recipe_cooking_assistant.edits import RecipeEdits, apply_direct_edits
 from recipe_cooking_assistant.ingredient_display import group_listed_ingredients
 from recipe_cooking_assistant.models import ExtractionResult, ReviewDecision, StoredExtraction
 from recipe_cooking_assistant.normalize import canonicalize_findings, remap_review_decisions
@@ -30,6 +31,8 @@ class PreparedRecipe:
     stored: StoredExtraction
     bundle: SourceBundle | None
     decisions: list[ReviewDecision]
+    reviewed: ExtractionResult
+    edits: RecipeEdits
     working: ExtractionResult
     cards: list[ReviewCard]
 
@@ -59,12 +62,16 @@ def prepare_recipe(
         db.list_review_decisions(stored.id, session_id),
         stored.result,
     )
-    working = apply_decisions(stored.result, decisions)
+    reviewed = apply_decisions(stored.result, decisions)
+    edits = db.get_recipe_edits(stored.id, session_id)
+    working = apply_direct_edits(reviewed, edits)
     cards = build_review_cards(stored.result, working, decisions)
     return PreparedRecipe(
         stored=stored,
         bundle=bundle,
         decisions=decisions,
+        reviewed=reviewed,
+        edits=edits,
         working=working,
         cards=cards,
     )
@@ -91,6 +98,7 @@ def not_found_response(request: Request, settings: Settings) -> HTMLResponse:
         "import.html",
         _not_found_context(settings),
         status_code=404,
+        headers={"Cache-Control": "no-store"},
     )
 
 
@@ -132,6 +140,7 @@ def recipe_detail(
         request,
         "recipe.html",
         _recipe_context(settings=settings, prepared=prepared),
+        headers={"Cache-Control": "no-store"},
     )
 
 
@@ -178,6 +187,7 @@ def review_finding(
                 open_edit=finding_id if action == "edit" else None,
             ),
             status_code=400,
+            headers={"Cache-Control": "no-store"},
         )
 
     db.upsert_review_decision(

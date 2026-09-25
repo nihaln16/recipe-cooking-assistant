@@ -69,6 +69,33 @@
   <div class="meta-row">
     {{ provenance_badge(step) }}
   </div>
+  {% if timer_offer %}
+  <section
+    class="source-timer"
+    id="source-timer"
+    data-recipe="{{ recipe_id }}"
+    data-step="{{ step_number }}"
+    data-seconds="{{ timer_offer.seconds }}"
+    data-label="{{ timer_offer.label }}"
+    data-approximate="{{ '1' if timer_offer.approximate else '0' }}"
+    data-range="{{ timer_offer.range_label or '' }}"
+    aria-labelledby="timer-heading"
+  >
+    <h3 id="timer-heading">Source timer</h3>
+    <p class="hint">
+      From this step:
+      {% if timer_offer.approximate %}about {% endif %}{{ timer_offer.range_label or timer_offer.label }}.
+      {% if timer_offer.range_label %}The timer starts at the shorter time so you can begin checking.{% endif %}
+    </p>
+    <p class="timer-readout" id="timer-readout" role="timer" aria-live="polite" aria-atomic="true">{{ timer_clock }} remaining</p>
+    <div class="actions">
+      <button class="btn btn-primary" type="button" id="timer-primary">Start timer</button>
+      <button class="btn btn-secondary" type="button" id="timer-toggle" disabled>Pause</button>
+    </div>
+  </section>
+  {% elif timer_ambiguous %}
+  <p class="hint">This step mentions more than one time ({% for label in timer_ambiguous.labels %}{{ label }}{% if not loop.last %}, {% endif %}{% endfor %}). No single timer was started.</p>
+  {% endif %}
 </article>
 
 {% if step_groups %}
@@ -154,20 +181,9 @@
     <button class="btn btn-primary" type="submit">{% if step_number == step_count %}Finish{% else %}Next{% endif %}</button>
   </form>
 </nav>
-<script>
-  const guideForm = document.getElementById("cook-guide-form");
-  if (guideForm) {
-    guideForm.addEventListener("submit", (event) => {
-      if (guideForm.dataset.submitting === "1") {
-        event.preventDefault();
-        return;
-      }
-      guideForm.dataset.submitting = "1";
-      guideForm.setAttribute("aria-busy", "true");
-      const status = document.getElementById("cook-guide-status");
-      if (status) status.textContent = "Sending…";
-    });
-  }
-</script>
+{% if timer_offer %}
+<script src="/static/js/timer.js"></script>
+{% endif %}
+<script src="/static/js/guide.js"></script>
 {% endif %}
 {% endblock %}

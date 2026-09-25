@@ -55,14 +55,16 @@ def _norm(value: str | None) -> str | None:
 
 def content_badge(item: Any) -> str:
     markers: list[str] = []
-    for field in ("name", "quantity", "unit", "text"):
+    for field in ("name", "quantity", "unit", "notes", "text"):
         specific = getattr(item, f"{field}_provenance", None)
         if specific:
             markers.append(specific)
-    if "user_edit" in markers:
+    if "user_edit" in markers or getattr(item, "provenance", None) == "user_edit":
         return "User edit"
     if "ai_suggestion" in markers:
         return "AI suggestion"
+    if "calculated" in markers or getattr(item, "provenance", None) == "calculated":
+        return "Calculated"
     if (
         getattr(item, "provenance", None) == "needs_review"
         or getattr(item, "confidence", None) == "uncertain"

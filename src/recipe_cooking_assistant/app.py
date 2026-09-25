@@ -15,9 +15,11 @@ from recipe_cooking_assistant.extraction import ExtractionClient
 from recipe_cooking_assistant.guidance import GuidanceClient
 from recipe_cooking_assistant.import_limit import ImportLimiter
 from recipe_cooking_assistant.routes.cook_routes import router as cook_router
+from recipe_cooking_assistant.routes.customize_routes import router as customize_router
 from recipe_cooking_assistant.routes.health import router as health_router
 from recipe_cooking_assistant.routes.import_routes import router as import_router
 from recipe_cooking_assistant.routes.recipe_routes import router as recipe_router
+from recipe_cooking_assistant.routes.scale_routes import router as scale_router
 from recipe_cooking_assistant.runtime import (
     assert_production_secrets,
     on_render,
@@ -64,6 +66,8 @@ def create_app(
     app.include_router(health_router)
     app.include_router(import_router)
     app.include_router(recipe_router)
+    app.include_router(customize_router)
+    app.include_router(scale_router)
     app.include_router(cook_router)
 
     app.add_middleware(

@@ -219,6 +219,51 @@ class Database:
                 );
                 CREATE INDEX IF NOT EXISTS idx_cook_messages_lookup
                     ON cook_messages(extraction_id, session_id, step_number, id);
+
+                CREATE TABLE IF NOT EXISTS recipe_edits (
+                    extraction_id TEXT NOT NULL,
+                    session_id TEXT NOT NULL,
+                    edits_json TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY (extraction_id, session_id),
+                    FOREIGN KEY (extraction_id) REFERENCES extracted_recipes(id)
+                        ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS prep_checks (
+                    extraction_id TEXT NOT NULL,
+                    session_id TEXT NOT NULL,
+                    ingredient_id TEXT NOT NULL,
+                    checked INTEGER NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY (extraction_id, session_id, ingredient_id),
+                    FOREIGN KEY (extraction_id) REFERENCES extracted_recipes(id)
+                        ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS substitution_messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    extraction_id TEXT NOT NULL,
+                    session_id TEXT NOT NULL,
+                    ingredient_id TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    body TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (extraction_id) REFERENCES extracted_recipes(id)
+                        ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_substitution_lookup
+                    ON substitution_messages(extraction_id, session_id, ingredient_id, id);
+
+                CREATE TABLE IF NOT EXISTS scaled_views (
+                    extraction_id TEXT NOT NULL,
+                    session_id TEXT NOT NULL,
+                    view_json TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY (extraction_id, session_id),
+                    FOREIGN KEY (extraction_id) REFERENCES extracted_recipes(id)
+                        ON DELETE CASCADE
+                );
                 """
             )
             cols = {
@@ -597,6 +642,235 @@ class Database:
                 step_number=step_number,
                 max_per_step=max_per_step,
                 max_per_recipe=max_per_recipe,
+            )
+
+    def get_recipe_edits(self, extraction_id: str, session_id: str):
+        from recipe_cooking_assistant.edits import RecipeEdits
+        with self.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT edits_json FROM recipe_edits
+                WHERE extraction_id = ? AND session_id = ?
+                """,
+                (extraction_id, session_id),
+            ).fetchone()
+        if row is None:
+            return RecipeEdits()
+        try:
+            payload = json.loads(row["edits_json"] or "{}")
+        except json.JSONDecodeError:
+            return RecipeEdits()
+        if not isinstance(payload, dict):
+            return RecipeEdits()
+        return RecipeEdits.model_validate(payload)
+
+    def save_recipe_edits(
+        self, *, extraction_id: str, session_id: str, edits
+    ) -> None:
+        with self.connect() as conn:
+            if edits.is_empty():
+                conn.execute(
+                    """
+                    DELETE FROM recipe_edits
+                    WHERE extraction_id = ? AND session_id = ?
+                    """,
+                    (extraction_id, session_id),
+                )
+                return
+            conn.execute(
+                """
+                INSERT INTO recipe_edits (
+                    extraction_id, session_id, edits_json, updated_at
+                ) VALUES (?, ?, ?, ?)
+                ON CONFLICT(extraction_id, session_id) DO UPDATE SET
+                    edits_json = excluded.edits_json,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    extraction_id,
+                    session_id,
+                    edits.model_dump_json(),
+                    isoformat(utcnow()),
+                ),
+            )
+
+    def list_prep_checks(self, extraction_id: str, session_id: str) -> set[str]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT ingredient_id FROM prep_checks
+                WHERE extraction_id = ? AND session_id = ? AND checked = 1
+                """,
+                (extraction_id, session_id),
+            ).fetchall()
+        return {row["ingredient_id"] for row in rows}
+
+    def set_prep_check(
+        self,
+        *,
+        extraction_id: str,
+        session_id: str,
+        ingredient_id: str,
+        checked: bool,
+    ) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO prep_checks (
+                    extraction_id, session_id, ingredient_id, checked, updated_at
+                ) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(extraction_id, session_id, ingredient_id) DO UPDATE SET
+                    checked = excluded.checked,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    extraction_id,
+                    session_id,
+                    ingredient_id,
+                    1 if checked else 0,
+                    isoformat(utcnow()),
+                ),
+            )
+
+    def list_substitution_messages(
+        self, extraction_id: str, session_id: str, ingredient_id: str
+    ) -> list[CookMessage]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, 0 AS step_number, role, body, created_at
+                FROM substitution_messages
+                WHERE extraction_id = ? AND session_id = ? AND ingredient_id = ?
+                ORDER BY id ASC
+                """,
+                (extraction_id, session_id, ingredient_id),
+            ).fetchall()
+        return [_cook_message(row) for row in rows]
+
+    def latest_substitution_user_message(
+        self, extraction_id: str, session_id: str, ingredient_id: str
+    ) -> CookMessage | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT id, 0 AS step_number, role, body, created_at
+                FROM substitution_messages
+                WHERE extraction_id = ? AND session_id = ? AND ingredient_id = ?
+                  AND role = 'user'
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (extraction_id, session_id, ingredient_id),
+            ).fetchone()
+        if row is None:
+            return None
+        return _cook_message(row)
+
+    def append_substitution_exchange(
+        self,
+        *,
+        extraction_id: str,
+        session_id: str,
+        ingredient_id: str,
+        user_text: str,
+        assistant_text: str,
+        max_per_ingredient: int,
+        max_per_recipe: int,
+    ) -> None:
+        created_at = isoformat(utcnow())
+        with self.connect() as conn:
+            for role, body in (("user", user_text), ("assistant", assistant_text)):
+                conn.execute(
+                    """
+                    INSERT INTO substitution_messages (
+                        extraction_id, session_id, ingredient_id, role, body, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        extraction_id,
+                        session_id,
+                        ingredient_id,
+                        role,
+                        body,
+                        created_at,
+                    ),
+                )
+            conn.execute(
+                """
+                DELETE FROM substitution_messages
+                WHERE extraction_id = ? AND session_id = ? AND ingredient_id = ?
+                  AND id NOT IN (
+                    SELECT id FROM substitution_messages
+                    WHERE extraction_id = ? AND session_id = ? AND ingredient_id = ?
+                    ORDER BY id DESC
+                    LIMIT ?
+                  )
+                """,
+                (
+                    extraction_id,
+                    session_id,
+                    ingredient_id,
+                    extraction_id,
+                    session_id,
+                    ingredient_id,
+                    max_per_ingredient,
+                ),
+            )
+            conn.execute(
+                """
+                DELETE FROM substitution_messages
+                WHERE extraction_id = ? AND session_id = ?
+                  AND id NOT IN (
+                    SELECT id FROM substitution_messages
+                    WHERE extraction_id = ? AND session_id = ?
+                    ORDER BY id DESC
+                    LIMIT ?
+                  )
+                """,
+                (
+                    extraction_id,
+                    session_id,
+                    extraction_id,
+                    session_id,
+                    max_per_recipe,
+                ),
+            )
+
+    def get_scaled_view(self, extraction_id: str, session_id: str) -> dict | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT view_json FROM scaled_views
+                WHERE extraction_id = ? AND session_id = ?
+                """,
+                (extraction_id, session_id),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            payload = json.loads(row["view_json"] or "{}")
+        except json.JSONDecodeError:
+            return None
+        return payload if isinstance(payload, dict) else None
+
+    def save_scaled_view(self, *, extraction_id: str, session_id: str, view: dict) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO scaled_views (extraction_id, session_id, view_json, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(extraction_id, session_id) DO UPDATE SET
+                    view_json = excluded.view_json,
+                    updated_at = excluded.updated_at
+                """,
+                (extraction_id, session_id, json.dumps(view), isoformat(utcnow())),
+            )
+
+    def delete_scaled_view(self, extraction_id: str, session_id: str) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                "DELETE FROM scaled_views WHERE extraction_id = ? AND session_id = ?",
+                (extraction_id, session_id),
             )
 
     def purge_expired(self) -> list[str]:

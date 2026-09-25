@@ -1,6 +1,6 @@
 # Project status handoff — Recipe Cooking Assistant
 
-Handoff for a new Cursor agent. Last updated after **milestone 6 grounded cooking conversation**. **Do not expose `.env`, API keys, session secrets, copyrighted screenshots, or ignored local evaluation files.**
+Handoff for a new Cursor agent. Last updated after **serving scaling as a separate cooking view**. **Do not expose `.env`, API keys, session secrets, copyrighted screenshots, or ignored local evaluation files.**
 
 ## User problem and V1 scope
 
@@ -22,7 +22,7 @@ Handoff for a new Cursor agent. Last updated after **milestone 6 grounded cookin
 
 ## Intentionally deferred
 
-- Timers, voice, accounts, saved library, broad visual redesign, and the Apple-design review of Cooking Mode
+- Voice, accounts, saved library, broad visual redesign, and the Apple-design review of Cooking Mode
 - Creating the Render service, GitHub secrets, or an OpenAI budget (the blueprint is in-repo; the user creates the service)
 - LLM-generated quantity/substitution patches (review uses deterministic recommendations only)
 - Social scraping, share integration, accounts, saved library, custom OCR/CV, advanced personalization
@@ -46,6 +46,9 @@ Handoff for a new Cursor agent. Last updated after **milestone 6 grounded cookin
 | `src/recipe_cooking_assistant/normalize.py` | Post-extract normalization, findings |
 | `src/recipe_cooking_assistant/quantity_consistency.py` | List-vs-step contradiction + source-amount parse |
 | `src/recipe_cooking_assistant/review.py` | Working-recipe overlay from review decisions |
+| `src/recipe_cooking_assistant/edits.py` | Direct user edits applied after review decisions |
+| `src/recipe_cooking_assistant/timer.py` | Source-duration parser and timer clock contract |
+| `src/recipe_cooking_assistant/scaling.py` | Deterministic serving scale for a separate view |
 | `src/recipe_cooking_assistant/cooking.py` | Step cursor, session progress, listed-id ingredient links, one-time guide token |
 | `src/recipe_cooking_assistant/guidance.py` | Grounded Responses API guidance client, context bounds, navigation phrases |
 | `src/recipe_cooking_assistant/ingredient_display.py` | Qualifiers, alternatives grouping, display lines |
@@ -65,6 +68,8 @@ Handoff for a new Cursor agent. Last updated after **milestone 6 grounded cookin
 4. **Cooking Mode** — one reviewed step at a time after findings are decided; session-scoped progress
 5. **Deployment preparation** — `render.yaml`, `GET /health`, GitHub Actions free tests. The Render service itself is not created.
 6. **Cooking conversation** — freeform questions and quick actions on each Cooking Mode step, grounded on the reviewed working recipe
+7. **Edits, preparation, substitution, timer** — direct edits on the working recipe, a preparation checklist, ingredient substitution chat, and a source-duration timer
+8. **Serving scale** — `/recipes/{id}/scale` derives a discardable view. The working recipe and `payload_json` stay unchanged.
 
 ## Provenance and review
 
@@ -135,7 +140,7 @@ Uses Responses API only. Results → `evals/results/` (gitignored). Copyrighted 
 
 ## Current passing counts
 
-- **87** pytest tests passed
+- **108** pytest tests passed
 - **16/16** deterministic eval cases passed
 
 ## Milestone 3 follow-up (duplicate findings)
@@ -181,6 +186,21 @@ Review queue is `result.findings` after `canonicalize_findings` in `normalize_re
 - A separate in-memory limiter runs before the guidance client: 20 questions per session per hour and 60 per process per hour (`GUIDANCE_LIMIT_PER_SESSION`, `GUIDANCE_LIMIT_PER_PROCESS`, `GUIDANCE_LIMIT_WINDOW_SECONDS`). Navigation, empty input, oversized input, invalid quick actions, and duplicate replays are not charged. The import limiter is unchanged.
 - Empty, oversized, invalid, rate-limited, unconfigured, and failed model requests keep the recipe, step, and earlier messages. Failures show a short recoverable error and do not store an assistant reply. User and model HTML is escaped.
 - Known limits: history is ephemeral with the recipe; the process limiter resets on restart; the model can still give imperfect cooking advice; appearance is not treated as proof of food safety in the prompt, but the app cannot verify the model obeyed; this slice does not redesign Cooking Mode.
+
+## Milestone 7 edits, preparation, substitution, and timer
+
+Working recipe = immutable extraction + review decisions + direct edits in `recipe_edits`. `payload_json` is not updated. Rejected findings stay excluded. Edit, Prepare, Cooking Mode, and substitution grounding all read that working recipe.
+
+- **Edit** is at `GET/POST /recipes/{id}/edit` after review is clear. Pending review returns 400 and does not write edits. Serving changes correct the label only and do not scale quantities. Added ids are `user_ing_N` and `user_step_N`. Removed source rows stay in the extraction and can be restored. Field provenance becomes `user_edit` only on fields that differ from the reviewed value.
+- **Prepare** is `GET/POST /recipes/{id}/prepare`. Checklist rows live in `prep_checks` and do not change the recipe. Unchecked ingredients do not block `Start cooking`. The recipe page still links directly to Cooking Mode; Prepare is the primary action.
+- **Substitution** reuses `OpenAIGuidanceClient.advise` and the guidance limiter. `GET /recipes/{id}/substitute/{ingredient_id}` shows source alternatives with no model call. `POST` the same path sends a grounded substitution context (`_purpose=substitution`). Replies are stored in `substitution_messages` and labeled **AI guidance**. They do not change the recipe. Replacing an ingredient is a normal edit, so the saved name is `user_edit`.
+- **Timer** parses the current step in `timer.py`. One explicit duration shows **Start timer**, labeled from the source step. A range starts at the lower value and shows the full range. Several independent durations do not start a timer. Browser state is `localStorage` key `rca-timer:{recipe}:{step}`. Expiration does not advance the step and does not write recipe data.
+
+Edit, checklist, and substitution rows cascade-delete with the recipe. Another session gets the existing 404.
+
+## Milestone 8 serving scale
+
+`GET/POST /recipes/{id}/scale` builds a session-scoped view in `scaled_views`. Twice the servings uses the current single count. Calculated amounts are labeled Calculated. Qualifiers, blank quantities, temperature, time, and pan size are not multiplied. `POST /scale/guide` asks for guidance only after a target is stored and reuses the guidance limiter. Confirm stores AI guidance or a user edit on that view only. Rollback deletes the view. Pending review and a range such as 4 to 6 do not calculate.
 
 ## Exact next recommended task
 

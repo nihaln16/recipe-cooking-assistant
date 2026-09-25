@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 Confidence = Literal["high", "uncertain"]
-Provenance = Literal["source", "needs_review", "ai_suggestion", "user_edit"]
+Provenance = Literal["source", "needs_review", "ai_suggestion", "user_edit", "calculated"]
 ReviewStatus = Literal["accepted", "edited", "rejected"]
 ListStatus = Literal["listed", "instruction_only"]
 ReviewFlagType = Literal[
@@ -64,6 +64,7 @@ class ExtractedIngredient(BaseModel):
     name_provenance: Provenance | None = None
     quantity_provenance: Provenance | None = None
     unit_provenance: Provenance | None = None
+    notes_provenance: Provenance | None = None
     confidence: Confidence = "high"
     evidence: SourceEvidence | None = None
 
@@ -129,6 +130,8 @@ class ExtractionResult(BaseModel):
     insufficient_reason: str | None = None
     title: str | None = None
     servings: str | None = None
+    title_provenance: Provenance | None = None
+    servings_provenance: Provenance | None = None
     ingredients: list[ExtractedIngredient] = Field(default_factory=list)
     steps: list[ExtractedStep] = Field(default_factory=list)
     creator_notes: list[CreatorNote] = Field(default_factory=list)
