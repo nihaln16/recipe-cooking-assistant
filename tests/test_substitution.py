@@ -99,12 +99,17 @@ def test_source_alternatives_need_no_model_call(tmp_path: Path) -> None:
         assert page.status_code == 200
         assert "Source alternatives" in page.text
         assert "lentils" in page.text.lower()
+        assert "Use lentils" in page.text
+        assert 'name="unit" value="cup"' in page.text
+        assert 'name="unit" value="ounces"' not in page.text
         assert "AI guidance" not in page.text or "Replies are AI guidance" in page.text
         assert guide.calls == []
 
 
 def test_substitution_is_grounded_isolated_and_does_not_mutate(tmp_path: Path) -> None:
-    guide = RecordingGuidance(replies=["Try lentils. This may change texture and is not an allergen guarantee."])
+    guide = RecordingGuidance(
+        replies=["Try a softer fat.\n- 1 | tablespoon | butter\n- 1 | tablespoon | olive oil"]
+    )
     with _client(tmp_path, _recipe(), guide) as client:
         location = _import(client)
         original = client.get(location).text
@@ -115,6 +120,10 @@ def test_substitution_is_grounded_isolated_and_does_not_mutate(tmp_path: Path) -
             follow_redirects=True,
         )
         assert "AI guidance" in sent.text
+        assert "Use 1 tablespoon butter" in sent.text
+        assert "Use 1 tablespoon olive oil" in sent.text
+        assert 'name="quantity" value="1"' in sent.text
+        assert 'name="unit" value="tablespoon"' in sent.text
         assert guide.calls
         context = guide.calls[0]
         assert context["_purpose"] == "substitution"

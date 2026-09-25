@@ -86,6 +86,7 @@
       readout.textContent = format(state.running ? left : state.remainingMs) + " remaining";
       readout.setAttribute("aria-live", "polite");
     }
+    root.classList.toggle("is-expired", !!state.expired);
     const paused = state.started && !state.running && !state.expired;
     primaryBtn.textContent = state.started ? "Reset timer" : "Start timer";
     toggleBtn.textContent = paused ? "Resume" : "Pause";

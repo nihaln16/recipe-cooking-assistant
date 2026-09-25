@@ -2,6 +2,7 @@
 {% from "_provenance.html" import provenance_badge %}
 
 {% block title %}Substitution · {{ app_name }}{% endblock %}
+{% block body_class %}is-substitute{% endblock %}
 
 {% block content %}
 <section class="hero-block">
@@ -16,8 +17,19 @@
 <div class="alert alert-error" role="alert">{{ blocked }}</div>
 <p><a class="btn btn-primary" href="/recipes/{{ stored.id }}">Back to recipe</a></p>
 {% else %}
-<p class="recipe-item-main">{{ target | ingredient_line }}</p>
-<div class="meta-row">{{ provenance_badge(target) }}</div>
+<div class="recipe-item">
+  <div class="recipe-item-main">{{ target | ingredient_line }}</div>
+  <div class="meta-row">{{ provenance_badge(target) }}</div>
+  {% if target.evidence and (target.evidence.quote or target.evidence.image_index is not none) %}
+  <details class="row-evidence">
+    <summary>Source quote</summary>
+    <p class="evidence">
+      {% if target.evidence.quote %}“{{ target.evidence.quote }}”{% endif %}
+      {% if target.evidence.image_index is not none %} · screenshot {{ target.evidence.image_index + 1 }}{% endif %}
+    </p>
+  </details>
+  {% endif %}
+</div>
 
 {% if alternatives %}
 <section class="recipe-section" aria-label="Source alternatives">
@@ -27,7 +39,23 @@
     {% for item in alternatives %}
     <li class="recipe-item">
       <div class="recipe-item-main">{{ item | ingredient_line }}</div>
-      <div class="meta-row"><span class="badge badge-source">Source</span></div>
+      <form method="post" action="/recipes/{{ stored.id }}/edit">
+        <input type="hidden" name="action" value="save_ingredient">
+        <input type="hidden" name="ingredient_id" value="{{ target.id }}">
+        <input type="hidden" name="focus_ingredient" value="{{ target.id }}">
+        <input type="hidden" name="name" value="{{ item.name }}">
+        <input type="hidden" name="quantity" value="{{ item.quantity or '' }}">
+        <input type="hidden" name="unit" value="{{ item.unit or '' }}">
+        <input type="hidden" name="notes" value="{{ item.notes or '' }}">
+        <button class="btn btn-secondary" type="submit">Use {{ item.name }}</button>
+      </form>
+      <div class="meta-row"><span class="badge badge-source">Recipe</span></div>
+      {% if item.evidence and item.evidence.quote %}
+      <details class="row-evidence">
+        <summary>Source quote</summary>
+        <p class="evidence">“{{ item.evidence.quote }}”</p>
+      </details>
+      {% endif %}
     </li>
     {% endfor %}
   </ul>
@@ -36,7 +64,7 @@
 
 <section class="cook-guide" aria-labelledby="sub-heading">
   <h2 id="sub-heading">Ask for substitution ideas</h2>
-  <p class="hint">Replies are AI guidance. They do not change the recipe. Edit the ingredient yourself if you want to use one.</p>
+  <p class="hint">Replies are AI guidance. Using a suggestion replaces this ingredient with the suggested amount. The old preparation is cleared.</p>
   {% if messages %}
   <div class="cook-thread" role="log" aria-label="Substitution conversation">
     {% for item in messages %}
@@ -51,6 +79,22 @@
         <p>{{ item.body }}</p>
       </article>
       {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if suggestions %}
+  <div class="cook-quick" role="group" aria-label="Use a suggestion">
+    {% for item in suggestions %}
+    <form method="post" action="/recipes/{{ stored.id }}/edit">
+      <input type="hidden" name="action" value="save_ingredient">
+      <input type="hidden" name="ingredient_id" value="{{ target.id }}">
+      <input type="hidden" name="focus_ingredient" value="{{ target.id }}">
+      <input type="hidden" name="name" value="{{ item.name }}">
+      <input type="hidden" name="quantity" value="{{ item.quantity }}">
+      <input type="hidden" name="unit" value="{{ item.unit }}">
+      <input type="hidden" name="notes" value="">
+      <button class="btn btn-secondary" type="submit">Use {% if item.quantity or item.unit %}{{ item.quantity }} {{ item.unit }} {% endif %}{{ item.name }}</button>
+    </form>
     {% endfor %}
   </div>
   {% endif %}
@@ -71,7 +115,7 @@
 </section>
 
 <nav class="actions">
-  <a class="btn btn-primary" href="/recipes/{{ stored.id }}/edit#ingredient-{{ target.id }}">Edit ingredient</a>
+  <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/edit?ingredient={{ target.id }}">Edit ingredient</a>
   <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/prepare">Back to preparation</a>
   <a class="btn btn-secondary" href="/recipes/{{ stored.id }}">Back to recipe</a>
 </nav>

@@ -1,49 +1,86 @@
 {% extends "base.html" %}
 
-{% block title %}Import · {{ app_name }}{% endblock %}
+{% block title %}{{ app_name }}{% endblock %}
+{% block body_class %}is-landing{% endblock %}
+
+{% block site_header %}
+<div class="landing-bar">
+  <a class="brand" href="/">{{ app_name }}</a>
+  <a class="btn btn-secondary landing-nav-btn" href="#how-it-works">How it works</a>
+</div>
+{% endblock %}
+
+{% block site_footer %}{% endblock %}
 
 {% block content %}
+<div class="dish-rail dish-rail-left" aria-hidden="true">
+  <div class="dish-rail-track">
+    {% for name in ["pasta", "salad", "soup", "cake", "roast", "fish", "pasta", "salad", "soup", "cake", "roast", "fish"] %}
+    <img src="/static/img/dish-{{ name }}.png" alt="">
+    {% endfor %}
+  </div>
+</div>
+<div class="dish-rail dish-rail-right" aria-hidden="true">
+  <div class="dish-rail-track">
+    {% for name in ["roast", "fish", "cake", "soup", "salad", "pasta", "roast", "fish", "cake", "soup", "salad", "pasta"] %}
+    <img src="/static/img/dish-{{ name }}.png" alt="">
+    {% endfor %}
+  </div>
+</div>
+
 <section class="hero-block">
-  <h1 class="brand-hero">{{ app_name }}</h1>
-  <p class="lede">Paste a caption or upload screenshots of the same recipe—in order. We’ll classify messy page content and keep creator source separate from anything uncertain.</p>
+  <p class="eyebrow">From source to stovetop</p>
+  <h1>Turn any recipe into a cooking guide you can trust.</h1>
+  <p class="lede">Paste a caption or upload screenshots. Review missing details, prepare your ingredients, and cook with grounded guidance one step at a time.</p>
 </section>
 
-{% if error %}
-<div class="alert alert-error" role="alert">{{ error }}</div>
-{% endif %}
-
-{% if not has_api_key %}
-<div class="alert alert-info" role="status">
-  Extraction needs an OpenAI API key in your local <code>.env</code> as <code>OPENAI_API_KEY</code>. Set it privately—don’t paste it into chat.
+<div id="import-alert" class="alert alert-error"{% if not error %} hidden{% endif %} role="alert">
+  {% if error %}
+    {% if error_status in (502, 503) %}
+    <p class="import-alert-title">We couldn’t create this recipe yet.</p>
+    <p>Check that your screenshots contain readable ingredients or directions, then try again. Your text is still here.</p>
+    {% elif error_status == 422 %}
+    <p class="import-alert-title">We couldn’t create this recipe yet.</p>
+    <p>{{ error }}</p>
+    <p>Your text is still here.</p>
+    {% else %}
+    <p>{{ error }}</p>
+    {% endif %}
+    <p class="import-alert-actions">
+      <a class="text-action" href="#recipe_text">Try again</a>
+    </p>
+    <form method="post" action="/import">
+      <input type="hidden" name="use_sample" value="1">
+      <button type="submit" class="btn btn-secondary">Use the sample recipe</button>
+    </form>
+  {% endif %}
 </div>
-{% endif %}
 
-<form class="sample-row" method="post" action="/import">
-  <input type="hidden" name="use_sample" value="1">
-  <button type="submit" class="btn btn-secondary">Try the sample recipe</button>
-  <p class="sample-dish">Garlic butter pasta</p>
-</form>
-<form class="import-form" action="/import" method="post" enctype="multipart/form-data">
+<form
+  class="import-form"
+  action="/import"
+  method="post"
+  enctype="multipart/form-data"
+  data-max-images="{{ limits.max_images }}"
+  data-max-bytes="{{ max_upload_bytes }}"
+>
   <div class="field">
-    <label for="recipe_text">Recipe text or caption</label>
+    <label for="recipe_text">Paste recipe text</label>
     <textarea
       id="recipe_text"
       name="recipe_text"
-      rows="10"
-      placeholder="Paste the ingredients, steps, or social caption here"
+      rows="8"
+      placeholder="Paste a recipe, caption, ingredient list, or cooking directions…"
     >{{ raw_text }}</textarea>
   </div>
 
   <fieldset class="field">
-    <legend>Screenshots</legend>
-    <p class="hint">
-      Up to {{ limits.max_images }} images · {{ limits.types_label }} ·
-      {{ limits.max_mb|int }}&nbsp;MB each · processed in the order you select.
-      A finished-dish photo alone is not enough—include readable recipe content.
-    </p>
+    <legend>Add screenshots</legend>
+    <p class="hint">Add ingredient lists, directions, or recipe captions in reading order.</p>
+    <p class="hint" id="upload-count">0 of {{ limits.max_images }} · {{ limits.types_label }} · {{ limits.max_mb|int }}&nbsp;MB each</p>
     <label class="file-drop" for="images">
       <span class="file-drop-title">Add screenshots</span>
-      <span class="file-drop-meta">Choose one or more images of the same recipe</span>
+      <span class="file-drop-meta">JPEG, PNG, or WebP, in the order you add them</span>
       <input
         id="images"
         name="images"
@@ -52,10 +89,64 @@
         multiple
       >
     </label>
+    <ol class="upload-list" id="upload-list" hidden></ol>
   </fieldset>
 
   <div class="actions">
-    <button type="submit" class="btn btn-primary">Extract recipe</button>
+    <button type="submit" class="btn btn-primary" id="create-guide" disabled>Create cooking guide →</button>
   </div>
 </form>
+
+<form class="sample-form" method="post" action="/import">
+  <input type="hidden" name="use_sample" value="1">
+  <button type="submit" class="landing-sample-card" id="sample-recipe">
+    <span class="landing-kicker">No recipe handy?</span>
+    <span class="landing-sample-title">Try a sample recipe</span>
+    <span class="sample-dish">Garlic butter pasta</span>
+  </button>
+</form>
+
+<p class="landing-privacy">No account required. Recipe text and uploads are temporary and expire automatically.</p>
+
+<section class="landing-how" id="how-it-works" aria-labelledby="how-heading">
+  <h2 id="how-heading" class="landing-kicker">How it works</h2>
+  <ol class="landing-stages">
+    <li class="landing-card">
+      <p class="landing-kicker">Step 01</p>
+      <h3>Review the details</h3>
+      <p>See what came from the source and resolve missing, conflicting, or instruction-only information.</p>
+    </li>
+    <li class="landing-card">
+      <p class="landing-kicker">Step 02</p>
+      <h3>Prepare your ingredients</h3>
+      <p>Adjust the working recipe, check off ingredients, and ask for substitution ideas.</p>
+    </li>
+    <li class="landing-card">
+      <p class="landing-kicker">Step 03</p>
+      <h3>Cook with guidance</h3>
+      <p>Follow one step at a time, use source-backed timers, and ask contextual cooking questions.</p>
+    </li>
+  </ol>
+</section>
+
+<section class="landing-trust landing-card" aria-labelledby="trust-heading">
+  <p class="landing-kicker">Why it stays trustworthy</p>
+  <h2 id="trust-heading">Source facts stay labeled.</h2>
+  <p>AI guidance and user edits remain distinct and never overwrite the original recipe.</p>
+  <ul class="landing-labels">
+    <li><span class="badge badge-source">Recipe</span></li>
+    <li><span class="badge badge-review">Needs review</span></li>
+    <li><span class="badge badge-edit">User edit</span></li>
+    <li><span class="badge badge-ai">AI guidance</span></li>
+  </ul>
+</section>
+
+<div class="import-loading" id="import-loading" hidden>
+  <div class="import-loading-panel">
+    <p class="import-loading-mark" aria-hidden="true"></p>
+    <p class="import-loading-status" id="import-status" aria-live="polite"></p>
+    <p class="hint" id="import-loading-note">Complex screenshots can take several seconds.</p>
+  </div>
+</div>
+<script src="/static/js/import.js"></script>
 {% endblock %}

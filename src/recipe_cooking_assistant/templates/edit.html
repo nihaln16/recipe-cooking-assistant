@@ -4,11 +4,13 @@
 {% block title %}Edit recipe · {{ app_name }}{% endblock %}
 
 {% block content %}
+{% if not focus_ingredient %}
 <section class="hero-block">
   <p class="eyebrow">Customize</p>
   <h1>Edit recipe</h1>
   <p class="lede">Changes here are your edits. The original extraction stays unchanged.</p>
 </section>
+{% endif %}
 
 {% if edit_error %}
 <div class="alert alert-error" role="alert">{{ edit_error }}</div>
@@ -18,6 +20,52 @@
 <nav class="actions" aria-label="Leave editing">
   <a class="btn btn-primary" href="/recipes/{{ stored.id }}">Back to review</a>
 </nav>
+{% elif focus_ingredient %}
+<section class="hero-block">
+  <p class="eyebrow">Edit ingredient</p>
+  <h1>{{ focus_ingredient | ingredient_line }}</h1>
+  <p class="lede">This change is yours. The original extraction stays unchanged.</p>
+</section>
+<form class="edit-block" method="post" action="/recipes/{{ stored.id }}/edit">
+  <input type="hidden" name="ingredient_id" value="{{ focus_ingredient.id }}">
+  <input type="hidden" name="focus_ingredient" value="{{ focus_ingredient.id }}">
+  <input type="hidden" name="return_to" value="prepare">
+  <div class="meta-row">
+    {{ provenance_badge(focus_ingredient) }}
+    {% if focus_ingredient.optional %}<span class="badge">Optional</span>{% endif %}
+  </div>
+  <div class="field">
+    <label for="name-{{ focus_ingredient.id }}">Name</label>
+    <input id="name-{{ focus_ingredient.id }}" name="name" type="text" required value="{{ focus_ingredient.name }}">
+  </div>
+  <div class="field">
+    <label for="qty-{{ focus_ingredient.id }}">Quantity</label>
+    <input id="qty-{{ focus_ingredient.id }}" name="quantity" type="text" value="{{ focus_ingredient.quantity or '' }}">
+  </div>
+  <div class="field">
+    <label for="unit-{{ focus_ingredient.id }}">Unit</label>
+    <input id="unit-{{ focus_ingredient.id }}" name="unit" type="text" value="{{ focus_ingredient.unit or '' }}">
+  </div>
+  <div class="field">
+    <label for="notes-{{ focus_ingredient.id }}">Preparation or qualifier</label>
+    <input id="notes-{{ focus_ingredient.id }}" name="notes" type="text" value="{{ focus_ingredient.notes or '' }}">
+  </div>
+  {% if focus_ingredient.id.startswith('user_ing_') %}
+  <label class="choice-row">
+    <input type="checkbox" name="optional" value="1" {% if focus_ingredient.optional %}checked{% endif %}>
+    Optional
+  </label>
+  {% endif %}
+  <div class="actions">
+    <button class="btn btn-primary" type="submit" name="action" value="save_ingredient">Save ingredient</button>
+    <button class="btn btn-tertiary" type="submit" name="action" value="remove_ingredient">Remove ingredient</button>
+    {% if focus_ingredient.id in edits.ingredient_fields or focus_ingredient.id.startswith('user_ing_') %}
+    <button class="btn btn-secondary" type="submit" name="action" value="revert_ingredient">Revert ingredient</button>
+    {% endif %}
+    <a class="text-action" href="/recipes/{{ stored.id }}/substitute/{{ focus_ingredient.id }}">I don’t have this</a>
+    <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/edit">All edits</a>
+  </div>
+</form>
 {% else %}
 
 <form class="edit-block" method="post" action="/recipes/{{ stored.id }}/edit">
@@ -33,8 +81,8 @@
     <input id="recipe-servings" name="servings" type="text" value="{{ recipe.servings or '' }}" placeholder="Unspecified">
   </div>
   <div class="meta-row">
-    {% if recipe.title_provenance == "user_edit" %}<span class="badge badge-edit">Title · user edit</span>{% else %}<span class="badge badge-source">Title · source</span>{% endif %}
-    {% if recipe.servings_provenance == "user_edit" %}<span class="badge badge-edit">Servings · user edit</span>{% else %}<span class="badge badge-source">Servings · source</span>{% endif %}
+    {% if recipe.title_provenance == "user_edit" %}<span class="badge badge-edit">Title · user edit</span>{% else %}<span class="badge badge-source">Title · recipe</span>{% endif %}
+    {% if recipe.servings_provenance == "user_edit" %}<span class="badge badge-edit">Servings · user edit</span>{% else %}<span class="badge badge-source">Servings · recipe</span>{% endif %}
   </div>
   <div class="actions">
     <button class="btn btn-primary" type="submit">Save title and servings</button>
@@ -52,47 +100,14 @@
     <p class="alt-label">Choose one</p>
     {% endif %}
     {% for item in members %}
-    <form class="edit-block" method="post" action="/recipes/{{ stored.id }}/edit" id="ingredient-{{ item.id }}">
-      <input type="hidden" name="ingredient_id" value="{{ item.id }}">
-      <h3>{{ item | ingredient_line }}</h3>
+    <div class="recipe-item" id="ingredient-{{ item.id }}">
+      <div class="recipe-item-main">{{ item | ingredient_line }}</div>
       <div class="meta-row">
         {{ provenance_badge(item) }}
-        {% if item.optional %}<span class="badge">Optional</span>{% endif %}
-        {% if item.evidence and item.evidence.quote %}
-        <span class="evidence">“{{ item.evidence.quote }}”</span>
-        {% endif %}
+        <a class="text-action" href="/recipes/{{ stored.id }}/edit?ingredient={{ item.id }}">Edit</a>
+        <a class="text-action" href="/recipes/{{ stored.id }}/substitute/{{ item.id }}">I don’t have this</a>
       </div>
-      <div class="field">
-        <label for="name-{{ item.id }}">Name</label>
-        <input id="name-{{ item.id }}" name="name" type="text" required value="{{ item.name }}">
-      </div>
-      <div class="field">
-        <label for="qty-{{ item.id }}">Quantity</label>
-        <input id="qty-{{ item.id }}" name="quantity" type="text" value="{{ item.quantity or '' }}">
-      </div>
-      <div class="field">
-        <label for="unit-{{ item.id }}">Unit</label>
-        <input id="unit-{{ item.id }}" name="unit" type="text" value="{{ item.unit or '' }}">
-      </div>
-      <div class="field">
-        <label for="notes-{{ item.id }}">Preparation or qualifier</label>
-        <input id="notes-{{ item.id }}" name="notes" type="text" value="{{ item.notes or '' }}">
-      </div>
-      {% if item.id.startswith('user_ing_') %}
-      <label class="choice-row">
-        <input type="checkbox" name="optional" value="1" {% if item.optional %}checked{% endif %}>
-        Optional
-      </label>
-      {% endif %}
-      <div class="actions">
-        <button class="btn btn-primary" type="submit" name="action" value="save_ingredient">Save ingredient</button>
-        <button class="btn btn-tertiary" type="submit" name="action" value="remove_ingredient">Remove ingredient</button>
-        {% if item.id in edits.ingredient_fields or item.id.startswith('user_ing_') %}
-        <button class="btn btn-secondary" type="submit" name="action" value="revert_ingredient">Revert ingredient</button>
-        {% endif %}
-        <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/substitute/{{ item.id }}">I don’t have this</a>
-      </div>
-    </form>
+    </div>
     {% endfor %}
   {% endfor %}
 

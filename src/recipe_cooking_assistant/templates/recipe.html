@@ -2,6 +2,7 @@
 {% from "_provenance.html" import provenance_badge %}
 
 {% block title %}{{ recipe.title or "Recipe" }} · {{ app_name }}{% endblock %}
+{% block body_class %}is-recipe{% endblock %}
 
 {% block content %}
 <section class="hero-block">
@@ -15,7 +16,7 @@
       {% endif %}
     </div>
   {% else %}
-  <p class="lede">Structured from your pasted text and screenshots. Original source is kept below.</p>
+  <p class="lede">Structured from your pasted text and screenshots.</p>
   {% endif %}
 </section>
 
@@ -26,7 +27,7 @@
 {% if pending_review %}
 <section class="flag-panel" aria-label="Items needing review">
   <h2>Needs review</h2>
-  <p class="hint">Source facts stay labeled. Recommendations are not applied until you choose.</p>
+  <p class="hint">{{ pending_review | length }} left. Source facts stay labeled. Recommendations are not applied until you choose.</p>
   <ul class="flag-list">
     {% for card in pending_review %}
     <li class="review-card">
@@ -142,10 +143,18 @@
 </section>
 {% endif %}
 
+{% if not pending_review %}
+<div class="actions recipe-actions">
+  <a class="btn btn-primary" href="/recipes/{{ stored.id }}/prepare">Prepare ingredients</a>
+  <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/cook">Start cooking</a>
+  <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/edit">Edit recipe</a>
+</div>
+{% endif %}
+
 {% if decided_review %}
-<section class="recipe-section" aria-label="Decided review items">
-  <h2>Decided</h2>
-  <ul class="flag-list">
+<details class="decided-fold" {% if pending_review %}open{% endif %}>
+  <summary>Decided ({{ decided_review | length }})</summary>
+  <ul class="flag-list" aria-label="Decided review items">
     {% for card in decided_review %}
     <li class="review-card is-decided">
       <div class="meta-row">
@@ -168,7 +177,7 @@
     </li>
     {% endfor %}
   </ul>
-</section>
+</details>
 {% endif %}
 
 <section class="recipe-section">
@@ -184,32 +193,33 @@
         <div class="alt-option">
           <div class="recipe-item-main">{{ item | ingredient_line }}</div>
           {% if not pending_review %}
-          <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/substitute/{{ item.id }}">I don’t have this</a>
+          <a class="text-action" href="/recipes/{{ stored.id }}/substitute/{{ item.id }}">I don’t have this</a>
           {% endif %}
           {% if not loop.last %}<p class="alt-or">or</p>{% endif %}
         </div>
         {% endfor %}
         <div class="meta-row">
-          <span class="badge badge-source">Source · alternatives</span>
+          <span class="badge badge-source">Recipe · alternatives</span>
         </div>
       </li>
       {% else %}
         {% for item in members %}
         <li class="recipe-item {% if item.optional %}is-optional{% endif %} {% if item | content_badge == 'Needs review' %}is-uncertain{% endif %}">
           <div class="recipe-item-main">{{ item | ingredient_line }}</div>
-          <div class="meta-row">
-            {% if item.optional %}
-            <span class="badge">Optional</span>
-            {% endif %}
-            {{ provenance_badge(item) }}
-            {% if not pending_review %}
-            <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/substitute/{{ item.id }}">I don’t have this</a>
-            {% endif %}
+          {% if not pending_review %}
+          <a class="text-action" href="/recipes/{{ stored.id }}/substitute/{{ item.id }}">I don’t have this</a>
+          {% endif %}
+          <div class="source-block">
+            <div class="meta-row">
+              {% if item.optional %}<span class="badge">Optional</span>{% endif %}
+              {{ provenance_badge(item) }}
+            </div>
             {% if item.evidence and (item.evidence.quote or item.evidence.image_index is not none) %}
-            <span class="evidence">
+            <p class="source-quote">
+              <span class="source-quote-label">Source quote</span>
               {% if item.evidence.quote %}“{{ item.evidence.quote }}”{% endif %}
               {% if item.evidence.image_index is not none %} · screenshot {{ item.evidence.image_index + 1 }}{% endif %}
-            </span>
+            </p>
             {% endif %}
           </div>
         </li>
@@ -231,11 +241,13 @@
     {% for item in instruction_only %}
     <li class="recipe-item is-uncertain">
       <div class="recipe-item-main">{{ item | ingredient_line }}</div>
-      <div class="meta-row">
-        <span class="badge badge-review">Instruction only</span>
-        {{ provenance_badge(item) }}
+      <div class="source-block">
+        <div class="meta-row">
+          <span class="badge badge-review">Instruction only</span>
+          {{ provenance_badge(item) }}
+        </div>
         {% if item.evidence and item.evidence.quote %}
-        <span class="evidence">“{{ item.evidence.quote }}”</span>
+        <p class="source-quote"><span class="source-quote-label">Source quote</span>“{{ item.evidence.quote }}”</p>
         {% endif %}
       </div>
     </li>
@@ -251,15 +263,15 @@
     {% for step in recipe.steps %}
     <li class="recipe-item {% if step | content_badge == 'Needs review' %}is-uncertain{% endif %}">
       <div class="recipe-item-main">{{ step.text }}</div>
-      <div class="meta-row">
-        {{ provenance_badge(step) }}
-        {% if step.source_direction_text %}
-        <span class="evidence">From: “{{ step.source_direction_text }}”</span>
-        {% elif step.evidence and (step.evidence.quote or step.evidence.image_index is not none) %}
-        <span class="evidence">
-          {% if step.evidence.quote %}“{{ step.evidence.quote }}”{% endif %}
-          {% if step.evidence.image_index is not none %} · screenshot {{ step.evidence.image_index + 1 }}{% endif %}
-        </span>
+      <div class="source-block">
+        <div class="meta-row">{{ provenance_badge(step) }}</div>
+        {% if step.source_direction_text or (step.evidence and (step.evidence.quote or step.evidence.image_index is not none)) %}
+        <p class="source-quote">
+          <span class="source-quote-label">Source quote</span>
+          {% if step.source_direction_text %}From: “{{ step.source_direction_text }}”
+          {% elif step.evidence.quote %}“{{ step.evidence.quote }}”{% endif %}
+          {% if step.evidence and step.evidence.image_index is not none and not step.source_direction_text %} · screenshot {{ step.evidence.image_index + 1 }}{% endif %}
+        </p>
         {% endif %}
       </div>
     </li>
@@ -286,66 +298,8 @@
 </section>
 {% endif %}
 
-{% if recipe.ignored_boilerplate %}
-<details class="source-details">
-  <summary>Ignored boilerplate ({{ recipe.ignored_boilerplate | length }})</summary>
-  <ul class="muted-list">
-    {% for item in recipe.ignored_boilerplate %}
-    <li><span class="badge">{{ item.role }}</span> {{ item.summary }}</li>
-    {% endfor %}
-  </ul>
-</details>
-{% endif %}
-
-{% if recipe.content_roles %}
-<details class="source-details">
-  <summary>Content roles classified</summary>
-  <ul class="muted-list">
-    {% for item in recipe.content_roles %}
-    <li>
-      <span class="badge">{{ item.role }}</span>
-      {{ item.summary }}
-      {% if item.kept_in_recipe %} · kept{% else %} · not kept as recipe fact{% endif %}
-    </li>
-    {% endfor %}
-  </ul>
-</details>
-{% endif %}
-
-{% if bundle %}
-<details class="source-details" open>
-  <summary>Original source</summary>
-  {% if bundle.raw_text %}
-  <pre class="source-text">{{ bundle.raw_text }}</pre>
-  {% endif %}
-  {% if bundle.images %}
-  <ul class="file-list">
-    {% for image in bundle.images %}
-    <li>
-      <span class="file-name">#{{ image.sort_index + 1 }} · {{ image.filename }}</span>
-      <span class="file-meta">{{ (image.size_bytes / 1024) | round(1) }} KB</span>
-    </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
-</details>
-{% endif %}
-
-{% if usage.estimated_cost_usd is not none or usage.input_tokens is not none %}
-<p class="usage-line muted">
-  Model {{ usage.model }}
-  {% if usage.input_tokens is not none %} · {{ usage.input_tokens }} in{% endif %}
-  {% if usage.output_tokens is not none %} / {{ usage.output_tokens }} out{% endif %}
-  {% if usage.estimated_cost_usd is not none %} · ~${{ "%.4f"|format(usage.estimated_cost_usd) }}{% endif %}
-</p>
-{% endif %}
-
 <div class="actions">
-  {% if not pending_review %}
-  <a class="btn btn-primary" href="/recipes/{{ stored.id }}/prepare">Prepare ingredients</a>
-  <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/cook">Start cooking</a>
-  <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/edit">Edit recipe</a>
-  {% else %}
+  {% if pending_review %}
   <p class="hint">Finish review before editing or preparing this recipe.</p>
   {% endif %}
   <a class="btn btn-secondary" href="/">Import another</a>

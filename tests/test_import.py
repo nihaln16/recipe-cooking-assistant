@@ -89,19 +89,27 @@ def test_import_page_renders(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert "Recipe Cooking Assistant" in response.text
-    assert "Extract recipe" in response.text
-    assert "Try the sample recipe" in response.text
+    assert "Create cooking guide" in response.text
+    assert "Try a sample recipe" in response.text
     assert "Garlic butter pasta" in response.text
     assert 'name="use_sample" value="1"' in response.text
-    assert response.text.index("Try the sample recipe") < response.text.index('id="recipe_text"')
+    assert response.text.index('id="recipe_text"') < response.text.index("Try a sample recipe")
+    assert response.text.index("Create cooking guide") < response.text.index("Try a sample recipe")
     assert re.search(r'id="recipe_text"[^>]*>\s*</textarea>', response.text)
 
 
 def test_sample_button_submits_the_sample_recipe(client: TestClient) -> None:
     response = client.post("/import", data={"use_sample": "1"}, follow_redirects=True)
     assert response.status_code == 200
-    assert "Garlic butter pasta" in response.text
-    assert "Cook the garlic until fragrant" in response.text
+    assert "Test pasta" in response.text
+    assert "Mix and bake." in response.text
+    assert "Garlic butter pasta" not in response.text
+    db = client.app.state.db
+    with db.connect() as conn:
+        stored = conn.execute("SELECT raw_text FROM source_bundles").fetchone()
+    assert stored is not None
+    assert "Garlic butter pasta" in stored["raw_text"]
+    assert "Cook the garlic until fragrant" in stored["raw_text"]
 
 
 def test_import_requires_content(client: TestClient) -> None:
@@ -126,7 +134,9 @@ def test_import_extracts_and_shows_recipe(client: TestClient, tmp_path: Path) ->
     assert "Test pasta" in detail.text
     assert "flour" in detail.text
     assert "Source" in detail.text
-    assert "Original source" in detail.text
+    assert "Original source" not in detail.text
+    assert "Ignored boilerplate" not in detail.text
+    assert "Content roles classified" not in detail.text
     assert list(tmp_path.joinpath("uploads").rglob("*.png"))
 
 
@@ -182,7 +192,8 @@ def test_missing_api_key_message(tmp_path: Path) -> None:
             data={"recipe_text": "1 cup sugar\nStir."},
         )
     assert response.status_code == 503
-    assert "OPENAI_API_KEY" in response.text
+    assert "We couldn’t create this recipe yet." in response.text
+    assert "OPENAI_API_KEY" not in response.text
 
 
 def test_upload_order_preserved_in_bundle(tmp_path: Path, sample_result: ExtractionResult) -> None:

@@ -100,7 +100,11 @@ Your reply is AI guidance. Do not say you changed the recipe, the ingredient, th
 
 When a change could matter, say so for quantity, texture, flavor, cooking time, temperature, technique, and allergens or dietary suitability. Do not guarantee allergen safety or that a substitute is safe for an allergy or diet.
 
-Never invent a quantity the recipe left blank. Do not double temperature or cooking time. Reply as JSON with one field, guidance: plain text. No HTML.
+Reply as JSON with one field, guidance: plain text. No HTML.
+
+When the target ingredient has a quantity, convert it and recommend a practical quantity and unit for each substitute. When the target has no quantity, leave quantity and unit blank. Do not invent an amount for a field the recipe left blank, and do not double temperature or cooking time.
+
+When you recommend substitutes, end the reply with one line per option. Each line starts with "- " and has three parts separated by " | ": quantity, unit, ingredient name. Example: - 1/2 | teaspoon | garlic powder. If there is no amount, write -  |  | chives.
 """
 
 SCALING_INSTRUCTIONS = """You give scaling guidance for one reviewed recipe at a chosen target serving count.
@@ -296,6 +300,41 @@ def _fit_context(context: dict[str, Any]) -> dict[str, Any]:
 
 def _size(context: dict[str, Any]) -> int:
     return len(json.dumps(context, ensure_ascii=False, separators=(",", ":")))
+
+
+def suggestion_names(text: str) -> list[dict[str, str]]:
+    """Substitutes from lines marked '- ', including quantity and unit when given."""
+    options: list[dict[str, str]] = []
+    seen: set[str] = set()
+    candidates = [
+        raw.strip()[2:]
+        for raw in text.splitlines()
+        if raw.strip().startswith("- ")
+    ]
+    if not candidates and " - " in text:
+        candidates = text.split(" - ")[1:]
+    for raw in candidates:
+        quantity, unit, name = _suggestion_parts(raw)
+        if not name or len(name) > 80 or len(name.split()) > 6:
+            continue
+        if len(quantity) > 20 or len(unit) > 40:
+            continue
+        key = name.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        options.append({"name": name, "quantity": quantity, "unit": unit})
+        if len(options) == 5:
+            break
+    return options
+
+
+def _suggestion_parts(raw: str) -> tuple[str, str, str]:
+    body = raw.split("(")[0].split("—")[0].strip(" .")
+    pieces = [part.strip(" .") for part in body.split("|")]
+    if len(pieces) >= 3:
+        return pieces[0], pieces[1], pieces[2]
+    return "", "", body
 
 
 def build_substitution_context(

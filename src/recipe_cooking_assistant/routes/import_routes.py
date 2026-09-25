@@ -65,13 +65,16 @@ def _import_context(
     *,
     error: str | None = None,
     raw_text: str = "",
+    error_status: int | None = None,
 ) -> dict:
     return {
         "app_name": settings.app_name,
         "limits": _format_limits(settings),
         "error": error,
+        "error_status": error_status,
         "raw_text": raw_text,
         "has_api_key": bool(settings.openai_api_key),
+        "max_upload_bytes": settings.max_upload_bytes,
     }
 
 
@@ -112,6 +115,7 @@ async def import_submit(
                 settings,
                 error="Paste recipe text and/or upload screenshots to continue.",
                 raw_text=recipe_text,
+                error_status=400,
             ),
             status_code=400,
         )
@@ -132,6 +136,7 @@ async def import_submit(
                     f"images, {limit_mb:.0f} MB each."
                 ),
                 raw_text=recipe_text,
+                error_status=400,
             ),
             status_code=400,
         )
@@ -147,7 +152,9 @@ async def import_submit(
         return templates.TemplateResponse(
             request,
             "import.html",
-            _import_context(settings, error=LIMIT_MESSAGE, raw_text=recipe_text),
+            _import_context(
+                settings, error=LIMIT_MESSAGE, raw_text=recipe_text, error_status=429
+            ),
             status_code=429,
         )
 
@@ -163,7 +170,9 @@ async def import_submit(
         return templates.TemplateResponse(
             request,
             "import.html",
-            _import_context(settings, error=exc.message, raw_text=recipe_text),
+            _import_context(
+                settings, error=exc.message, raw_text=recipe_text, error_status=400
+            ),
             status_code=400,
         )
 
@@ -184,7 +193,9 @@ async def import_submit(
         return templates.TemplateResponse(
             request,
             "import.html",
-            _import_context(settings, error=exc.message, raw_text=recipe_text),
+            _import_context(
+                settings, error=exc.message, raw_text=recipe_text, error_status=503
+            ),
             status_code=503,
         )
     except Exception as exc:
@@ -196,6 +207,7 @@ async def import_submit(
                 settings,
                 error=SAFE_UI_API_ERROR,
                 raw_text=recipe_text,
+                error_status=502,
             ),
             status_code=502,
         )
@@ -219,6 +231,7 @@ async def import_submit(
                     "A finished-dish photo alone is not enough."
                 ),
                 raw_text=recipe_text,
+                error_status=422,
             ),
             status_code=422,
         )

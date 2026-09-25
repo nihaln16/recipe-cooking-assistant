@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from recipe_cooking_assistant.config import Settings
@@ -17,6 +17,7 @@ from recipe_cooking_assistant.edits import EditError, apply_edit_action
 from recipe_cooking_assistant.guidance import (
     DUPLICATE_WINDOW_SECONDS,
     EMPTY_MESSAGE,
+    suggestion_names,
     MAX_GUIDANCE_CHARS,
     MAX_STORED_PER_RECIPE,
     MAX_STORED_PER_STEP,
@@ -67,6 +68,7 @@ def _edit_page(
     status_code: int = 200,
     edit_error: str | None = None,
     draft: dict | None = None,
+    focus_ingredient: ExtractedIngredient | None = None,
 ) -> HTMLResponse:
     reviewed_ids = {item.id for item in prepared.reviewed.ingredients}
     removed = [
@@ -95,6 +97,7 @@ def _edit_page(
             "edit_error": edit_error,
             "draft": draft or {},
             "can_edit": not prepared.pending,
+            "focus_ingredient": focus_ingredient,
         },
         status_code=status_code,
         headers={"Cache-Control": "no-store"},
@@ -105,6 +108,7 @@ def _edit_page(
 def edit_page(
     request: Request,
     recipe_id: str,
+    ingredient: str | None = Query(default=None),
     settings: Settings = Depends(get_settings),
     db: Database = Depends(get_db),
     session_id: str = Depends(get_session_id),
@@ -116,7 +120,22 @@ def edit_page(
         return _edit_page(
             request, settings, prepared, status_code=400, edit_error=REVIEW_FIRST
         )
-    return _edit_page(request, settings, prepared)
+    focus = None
+    error = None
+    if ingredient:
+        focus = next(
+            (
+                item
+                for item in prepared.working.ingredients
+                if item.id == ingredient and item.list_status == "listed"
+            ),
+            None,
+        )
+        if focus is None:
+            error = "That ingredient is not on the working recipe."
+    return _edit_page(
+        request, settings, prepared, edit_error=error, focus_ingredient=focus
+    )
 
 
 @router.post("/recipes/{recipe_id}/edit", response_class=HTMLResponse)
@@ -135,6 +154,8 @@ def edit_submit(
     text: str | None = Form(default=None),
     optional: str | None = Form(default=None),
     direction: str | None = Form(default=None),
+    focus_ingredient: str | None = Form(default=None),
+    return_to: str | None = Form(default=None),
     settings: Settings = Depends(get_settings),
     db: Database = Depends(get_db),
     session_id: str = Depends(get_session_id),
@@ -175,7 +196,16 @@ def edit_submit(
         session_id=session_id,
         edits=updated,
     )
-    return RedirectResponse(url=f"/recipes/{prepared.stored.id}/edit", status_code=303)
+    if action == "save_ingredient" and (return_to or "").strip() == "prepare":
+        return RedirectResponse(
+            url=f"/recipes/{prepared.stored.id}/prepare",
+            status_code=303,
+        )
+    target = f"/recipes/{prepared.stored.id}/edit"
+    chosen = (focus_ingredient or "").strip()
+    if chosen:
+        target = f"{target}?ingredient={chosen}"
+    return RedirectResponse(url=target, status_code=303)
 
 
 def _prepare_page(
@@ -309,6 +339,10 @@ def _substitute_page(
     messages = db.list_substitution_messages(
         prepared.stored.id, prepared.stored.session_id, target.id
     )
+    latest = next(
+        (item.body for item in reversed(messages) if item.role == "assistant"),
+        "",
+    )
     return templates.TemplateResponse(
         request,
         "substitute.html",
@@ -319,6 +353,7 @@ def _substitute_page(
             "target": target,
             "alternatives": _alternatives(prepared, target),
             "messages": messages,
+            "suggestions": suggestion_names(latest),
             "form_token": ensure_guide_token(
                 request.session, prepared.stored.id, SUBSTITUTION_TOKEN_KEY
             ),

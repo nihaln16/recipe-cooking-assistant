@@ -2,6 +2,7 @@
 {% from "_provenance.html" import provenance_badge %}
 
 {% block title %}Prepare ingredients · {{ app_name }}{% endblock %}
+{% block body_class %}is-prepare{% endblock %}
 
 {% block content %}
 <section class="hero-block">
@@ -40,10 +41,19 @@
       </form>
       <div class="prep-copy">
         <div class="recipe-item-main">{{ item | ingredient_line }}</div>
-        <div class="meta-row">
-          {% if item.optional %}<span class="badge">Optional</span>{% endif %}
-          {{ provenance_badge(item) }}
-          <a class="btn btn-secondary" href="/recipes/{{ stored.id }}/substitute/{{ item.id }}">I don’t have this</a>
+        <a class="text-action" href="/recipes/{{ stored.id }}/substitute/{{ item.id }}">I don’t have this</a>
+        <div class="source-block">
+          <div class="meta-row">
+            {% if item.optional %}<span class="badge">Optional</span>{% endif %}
+            {{ provenance_badge(item) }}
+          </div>
+          {% if item.evidence and (item.evidence.quote or item.evidence.image_index is not none) %}
+          <p class="source-quote">
+            <span class="source-quote-label">Source quote</span>
+            {% if item.evidence.quote %}“{{ item.evidence.quote }}”{% endif %}
+            {% if item.evidence.image_index is not none %} · screenshot {{ item.evidence.image_index + 1 }}{% endif %}
+          </p>
+          {% endif %}
         </div>
       </div>
     </div>

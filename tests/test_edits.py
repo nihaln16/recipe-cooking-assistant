@@ -72,6 +72,52 @@ def _pasta() -> ExtractionResult:
     )
 
 
+def test_one_ingredient_edit_hides_the_rest_of_the_recipe(tmp_path: Path) -> None:
+    with _client(tmp_path, _pasta()) as client:
+        location = _import(client)
+        page = client.get(f"{location}/edit?ingredient=ing_garlic")
+        assert page.status_code == 200
+        assert "3 cloves garlic, minced" in page.text
+        assert "Save ingredient" in page.text
+        assert "Boil the pasta." not in page.text
+        assert "Salt" not in page.text
+        saved = client.post(
+            f"{location}/edit",
+            data={
+                "action": "save_ingredient",
+                "ingredient_id": "ing_garlic",
+                "focus_ingredient": "ing_garlic",
+                "name": "shallot",
+                "quantity": "3",
+                "unit": "cloves",
+                "notes": "minced",
+            },
+            follow_redirects=False,
+        )
+        assert saved.status_code == 303
+        assert saved.headers["location"].endswith("?ingredient=ing_garlic")
+        replaced = client.post(
+            f"{location}/edit",
+            data={
+                "action": "save_ingredient",
+                "ingredient_id": "ing_garlic",
+                "focus_ingredient": "ing_garlic",
+                "name": "garlic powder",
+                "quantity": "",
+                "unit": "",
+                "notes": "",
+                "return_to": "prepare",
+            },
+            follow_redirects=False,
+        )
+        assert replaced.status_code == 303
+        assert replaced.headers["location"].endswith("/prepare")
+        prepare = client.get(replaced.headers["location"])
+        assert "Garlic powder" in prepare.text
+        assert "cloves" not in replaced.text
+        assert "minced" not in replaced.text
+
+
 def test_title_and_servings_do_not_scale(tmp_path: Path) -> None:
     with _client(tmp_path, _pasta()) as client:
         location = _import(client)
